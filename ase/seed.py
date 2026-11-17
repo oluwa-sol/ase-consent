@@ -19,7 +19,7 @@ DEFAULT_USES = [
             },
             "pcm": {
                 "title": "Research for community health",
-                "explain": "The health team fit use your information, without your name, to understand wetin people for your community need, so dem go fit make the service better.",
+                "explain": "Dem health people fit use your information, your name no go show, to sabi wetin people for your community need, so dem go fit make the service better.",
             },
         },
     },
@@ -29,11 +29,11 @@ DEFAULT_USES = [
         "text": {
             "en": {
                 "title": "Sharing with partner organisations",
-                "explain": "Your information, without your name, may be shared with trusted partners such as universities or NGOs. Each request must first be approved by a community panel.",
+                "explain": "Your information, without your name, may be shared with trusted partners like universities or NGOs. The community panel must approve every request.",
             },
             "pcm": {
                 "title": "Sharing with partner organisations",
-                "explain": "Dem fit share your information, without your name, with partners wey dem trust, like university or NGO. But the community panel must first approve every request.",
+                "explain": "Dem fit share your information, your name no go show, with partners wey dem trust, like university or NGO. But the community panel go approve am first.",
             },
         },
     },
@@ -47,7 +47,7 @@ DEFAULT_USES = [
             },
             "pcm": {
                 "title": "To build AI tools",
-                "explain": "Dem fit use your information, without your name, take build AI tools, like tools wey go help health workers know who need support. Na only if the community panel approve am.",
+                "explain": "Dem fit use your information, your name no go show, take build AI tools, like tools wey go help health workers sabi people wey need support. Na only if the community panel approve am.",
             },
         },
     },
@@ -61,7 +61,7 @@ DEFAULT_USES = [
             },
             "pcm": {
                 "title": "Make dem contact you later",
-                "explain": "Health worker fit message you to check on you, or invite you to join one study.",
+                "explain": "Health worker fit message you to check how you dey, or call you say make you come learn something.",
             },
         },
     },
