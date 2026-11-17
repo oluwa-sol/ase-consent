@@ -61,7 +61,7 @@ DEFAULT_USES = [
             },
             "pcm": {
                 "title": "Make dem contact you later",
-                "explain": "Health worker fit message you to check how you dey, or call you say make you come learn something.",
+                "explain": "Health worker fit message you to check how you dey, or call you say make you join one research wey dem dey do.",
             },
         },
     },
