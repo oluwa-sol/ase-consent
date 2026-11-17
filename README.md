@@ -35,7 +35,32 @@ Communities don't all use the same app. WhatsApp dominates in Nigeria and much o
 
 ## Status
 
-Early development. Background research is in [`research/`](research/).
+Early development. Working today:
+
+- Channel-agnostic consent core with a **hash-chained, append-only consent ledger** (any edit or deletion is detected)
+- Chat flow in **English and Nigerian Pidgin**: consent per use, view choices, change them, withdraw everything (with confirmation)
+- **Telegram** connector (webhook and local polling). WhatsApp connector next.
+- **Consent check API** for organisations: `GET /v1/consent/check?reference=ASE-XXXXXX&use=ai_training` answers only "allowed or not", never anything else about the person
+- Public **ledger verification**: `GET /v1/ledger/verify`
+
+Background research is in [`research/`](research/).
+
+## Run it locally
+
+```bash
+python -m venv .venv
+.venv/Scripts/activate        # Windows  (macOS/Linux: source .venv/bin/activate)
+pip install -e ".[dev]"
+pytest                        # run the tests
+
+# Telegram bot (create a bot with @BotFather first)
+set TELEGRAM_BOT_TOKEN=your-token       # macOS/Linux: export TELEGRAM_BOT_TOKEN=your-token
+python scripts/telegram_polling.py
+
+# API
+set ASE_ORG_API_KEY=choose-a-key
+uvicorn ase.api:app --reload
+```
 
 ## Stack
 
