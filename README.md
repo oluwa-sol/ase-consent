@@ -1,6 +1,6 @@
 # Àṣẹ
 
-**Community-controlled consent for health data, over WhatsApp.**
+**Community-controlled consent for health data, on the messaging apps people already use: WhatsApp and Telegram.**
 
 *Àṣẹ* (Yoruba) means "authority", "so it is". It is the word that makes something binding. This project is about who gets to say it over people's data.
 
@@ -10,9 +10,18 @@ Health data from African communities, including mental health data, is increasin
 
 Àṣẹ is an open-source tool that lets people and communities decide how their data is used, in a channel they already use every day.
 
+## Built for the channel people already have
+
+Communities don't all use the same app. WhatsApp dominates in Nigeria and much of Africa, Telegram is the main messenger in other regions and in communities where WhatsApp is restricted or unreliable, and some people have no smartphone at all. So Àṣẹ is **channel-agnostic by design**: the consent logic lives in one core, and each messaging app is a thin connector on top.
+
+- **WhatsApp** and **Telegram** are both first-class channels from day one, with the same features on each.
+- A person's consent is the same record whichever channel they use, so they can switch apps without losing control.
+- **SMS** is planned next, for people on basic phones.
+- New channels can be added without touching the consent rules.
+
 ## What it does (planned)
 
-- **Plain-language consent on WhatsApp**, in English, Nigerian Pidgin and Yoruba, with voice notes for people who prefer listening to reading.
+- **Plain-language consent in the chat**, on WhatsApp or Telegram, in English, Nigerian Pidgin and Yoruba, with voice notes for people who prefer listening to reading.
 - **Consent per use, not one big "I agree".** Separate choices for community research, sharing with partners, AI training, and more.
 - **Change or withdraw any time** with a simple message. Withdrawal is passed on to every approved data user, who must confirm.
 - **A community panel** (young people, people with lived experience, community health workers) that approves or rejects each request to use the data.
@@ -30,7 +39,7 @@ Early development. Background research is in [`research/`](research/).
 
 ## Stack
 
-Python (FastAPI), PostgreSQL, WhatsApp Cloud API, Telegram, a lightweight web dashboard, Docker.
+Python (FastAPI), PostgreSQL, a channel-agnostic consent core with connectors for the WhatsApp Cloud API and the Telegram Bot API (SMS planned), a lightweight web dashboard, Docker.
 
 ## Licence
 
