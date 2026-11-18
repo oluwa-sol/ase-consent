@@ -72,11 +72,11 @@ L = {
 CSS = """
 :root{--bg:#f6efe2;--card:#fffaf1;--ink:#1c2340;--muted:#5d6380;--indigo:#1f2a5a;--indigo-2:#2f3d7a;
 --line:#e4d8c3;--yes:#2f7a4f;--no:#a4442f;--wd:#8a8a9a;--ochre:#c8892b;--ok-bg:#e3f1e7;--bad-bg:#f8e1db}
-@media (prefers-color-scheme:dark){:root{--bg:#10142a;--card:#171c38;--ink:#efe8da;--muted:#a9adc6;--indigo:#0b0f24;
---indigo-2:#2a3570;--line:#2b3159;--yes:#5fbf86;--no:#e08068;--wd:#8f93ad;--ochre:#e0a64a;--ok-bg:#1b3527;--bad-bg:#3d211b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1a1511;--card:#241d17;--ink:#f1e7d6;--muted:#bfb19b;--indigo:#1f2a5a;
+--indigo-2:#c8892b;--line:#3a2f25;--yes:#6cbf8a;--no:#e3876f;--wd:#a39a8c;--ochre:#e3a64f;--ok-bg:#20301f;--bad-bg:#3b2119;color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-a{color:var(--indigo-2)} @media (prefers-color-scheme:dark){a{color:#9fb0ff}}
+a{color:var(--indigo-2)}
 header{background:var(--indigo);color:#f6efe2;
 background-image:radial-gradient(circle at 12px 12px,rgba(246,239,226,.10) 3px,transparent 4px),
 repeating-linear-gradient(45deg,rgba(246,239,226,.05) 0 2px,transparent 2px 14px);background-size:24px 24px,auto}
@@ -84,7 +84,8 @@ repeating-linear-gradient(45deg,rgba(246,239,226,.05) 0 2px,transparent 2px 14px
 header .wrap{padding-block:28px 26px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
 .brand{font-family:Georgia,"Times New Roman",serif;font-size:2.4rem;line-height:1;margin:0;letter-spacing:.5px}
 .tag{margin:.35rem 0 0;color:#d9d2c3;font-size:.95rem}
-.pill{border:1px solid rgba(246,239,226,.45);color:#f6efe2;text-decoration:none;padding:6px 12px;border-radius:999px;font-size:.85rem}
+.pill{border:1px solid rgba(246,239,226,.45);color:#f6efe2;background:transparent;text-decoration:none;padding:6px 12px;border-radius:999px;font-size:.85rem;font-weight:500;cursor:pointer;font-family:inherit}
+.tools{display:flex;gap:8px;align-items:center}
 main .wrap{padding-block:24px 48px;display:grid;gap:20px}
 h2{font-family:Georgia,serif;font-size:1.35rem;margin:0 0 .4rem}
 h3{font-size:1rem;margin:0}
@@ -119,10 +120,14 @@ def _page(title: str, body: str, lang: str = "en", switch: str = "") -> str:
     tl = L[lang]
     return f"""<!doctype html><html lang="{'en' if lang == 'en' else 'pcm'}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="referrer" content="no-referrer"><title>{escape(title)} · Àṣẹ</title><style>{CSS}</style></head><body>
-<header><div class="wrap"><div><p class="brand">Àṣẹ</p><p class="tag">{escape(tl['tagline'])}</p></div>{switch}</div></header>
+<meta name="referrer" content="no-referrer"><script>try{{if(localStorage.getItem("ase-theme")==="dark")document.documentElement.dataset.theme="dark"}}catch(e){{}}</script><title>{escape(title)} · Àṣẹ</title><style>{CSS}</style></head><body>
+<header><div class="wrap"><div><p class="brand">Àṣẹ</p><p class="tag">{escape(tl['tagline'])}</p></div><div class="tools">{switch}<button class="pill" id="theme" type="button" aria-label="Switch light or dark mode">🌙</button></div></div></header>
 <main><div class="wrap">{body}</div></main>
-<footer><a href="https://github.com/oluwa-sol/ase-consent">{escape(tl['source'])}</a> · Apache 2.0</footer></body></html>"""
+<footer><a href="https://github.com/oluwa-sol/ase-consent">{escape(tl['source'])}</a> · Apache 2.0</footer>
+<script>(function(){{var b=document.getElementById("theme"),r=document.documentElement;
+function show(){{b.textContent=r.dataset.theme==="dark"?"☀️":"🌙"}}show();
+b.addEventListener("click",function(){{if(r.dataset.theme==="dark"){{delete r.dataset.theme}}else{{r.dataset.theme="dark"}}
+try{{localStorage.setItem("ase-theme",r.dataset.theme||"light")}}catch(e){{}}show()}})}})();</script></body></html>"""
 
 
 def _pct(part: int, whole: int) -> float:
