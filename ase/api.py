@@ -37,6 +37,16 @@ def _check_org_key(key: str | None) -> None:
         raise HTTPException(status_code=401, detail="invalid or missing API key")
 
 
+@app.get("/")
+def about():
+    return {
+        "name": "Àṣẹ",
+        "about": "Community-controlled consent for health data, on WhatsApp and Telegram.",
+        "source": "https://github.com/oluwa-sol/ase-consent",
+        "endpoints": ["/health", "/v1/uses", "/v1/ledger/verify", "/v1/consent/check (API key)"],
+    }
+
+
 @app.get("/health")
 def health():
     return {"ok": True}

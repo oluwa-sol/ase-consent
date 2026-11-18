@@ -1,0 +1,38 @@
+# Render Blueprint: one web service + one Postgres database.
+# Deploy: Render dashboard > New > Blueprint > pick this repo.
+# Secrets marked "sync: false" are typed into the Render dashboard, never committed.
+services:
+  - type: web
+    name: ase-consent
+    runtime: python
+    plan: free
+    buildCommand: pip install .
+    startCommand: uvicorn ase.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ase-db
+          property: connectionString
+      - key: ASE_ORG_API_KEY
+        generateValue: true
+      - key: TELEGRAM_WEBHOOK_SECRET
+        generateValue: true
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+
+databases:
+  - name: ase-db
+    plan: free
+    databaseName: ase
+    user: ase

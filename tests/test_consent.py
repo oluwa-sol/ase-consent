@@ -38,3 +38,10 @@ def test_withdraw_all_only_touches_granted(db):
     assert sorted(withdrawn) == sorted([uses[0].code, uses[2].code])
     assert not any(consent.is_allowed(db, p, u.code) for u in uses)
     assert consent.latest_decisions(db, p)[uses[1].code].decision == "refused"
+
+
+def test_hosted_postgres_urls_get_the_psycopg_driver():
+    from ase.db import _normalise
+    assert _normalise("postgres://u:p@h/db") == "postgresql+psycopg://u:p@h/db"
+    assert _normalise("postgresql://u:p@h/db") == "postgresql+psycopg://u:p@h/db"
+    assert _normalise("sqlite:///./ase.db") == "sqlite:///./ase.db"
