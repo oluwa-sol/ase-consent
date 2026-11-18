@@ -15,7 +15,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from . import consent, datausers, ledger
+from . import consent, datausers, ledger, web
 from .channels import telegram, whatsapp
 from .db import SessionLocal, init_db
 from .models import DataUse, DataUser, Person
@@ -32,6 +32,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Àṣẹ", version="0.1.0", lifespan=lifespan)
+app.include_router(web.router)
 
 
 def _check_admin_key(key: str | None) -> None:
@@ -46,6 +47,7 @@ def about():
         "name": "Àṣẹ",
         "about": "Community-controlled consent for health data, on WhatsApp and Telegram.",
         "source": "https://github.com/oluwa-sol/ase-consent",
+        "pages": ["/transparency", "/transparency?lang=pcm"],
         "endpoints": ["/health", "/v1/uses", "/v1/ledger/verify", "/v1/consent/check (org key)", "/v1/notices (org key)"],
     }
 

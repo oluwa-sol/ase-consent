@@ -44,6 +44,17 @@ def approve(db: Session, du: DataUser, use_code: str, note: str = "") -> DataUse
     return access
 
 
+def revoke(db: Session, du: DataUser, use_code: str) -> bool:
+    """Remove an approval. Future checks for this use are refused straight away."""
+    access = db.scalars(select(DataUserAccess).where(
+        DataUserAccess.data_user_id == du.id, DataUserAccess.data_use_code == use_code)).first()
+    if access is None:
+        return False
+    db.delete(access)
+    db.flush()
+    return True
+
+
 def is_approved(db: Session, du: DataUser, use_code: str) -> bool:
     return db.scalars(select(DataUserAccess).where(
         DataUserAccess.data_user_id == du.id, DataUserAccess.data_use_code == use_code)).first() is not None

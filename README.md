@@ -49,6 +49,8 @@ Early development. Working today:
 - **Consent check API**: `GET /v1/consent/check?reference=ASE-XXXXXX&use=ai_training` answers only "allowed or not". Allowed needs both an approved organisation and the person's YES, and every "allowed" is logged
 - **Withdrawal that travels**: when someone withdraws or changes a YES to NO, every organisation that used their data for that purpose gets a notice (`GET /v1/notices`) and must confirm it has stopped (`POST /v1/notices/{id}/ack`). The person is told how many organisations were notified
 - Public **ledger verification**: `GET /v1/ledger/verify`
+- **Public transparency page** ([`/transparency`](https://ase-consent.onrender.com/transparency), also in [Pidgin](https://ase-consent.onrender.com/transparency?lang=pcm)): what people agreed to per use, which organisations are approved, how many withdrawal notices are confirmed or still open, and the record check. Never shows anyone's personal information, and loads no fonts, scripts or trackers from anywhere else
+- **Panel** (`/panel`, admin key): register organisations, approve or remove uses, see open withdrawal notices
 
 Background research is in [`research/`](research/).
 
