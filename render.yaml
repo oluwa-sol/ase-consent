@@ -18,8 +18,9 @@ services:
           property: connectionString
       - key: ASE_ORG_API_KEY
         generateValue: true
+      # Telegram accepts only letters, digits, _ and - here, so set it yourself (no = or +)
       - key: TELEGRAM_WEBHOOK_SECRET
-        generateValue: true
+        sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: WHATSAPP_TOKEN
