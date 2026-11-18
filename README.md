@@ -50,7 +50,8 @@ Early development. Working today:
 - **Withdrawal that travels**: when someone withdraws or changes a YES to NO, every organisation that used their data for that purpose gets a notice (`GET /v1/notices`) and must confirm it has stopped (`POST /v1/notices/{id}/ack`). The person is told how many organisations were notified
 - Public **ledger verification**: `GET /v1/ledger/verify`
 - **Public transparency page** ([`/transparency`](https://ase-consent.onrender.com/transparency), also in [Pidgin](https://ase-consent.onrender.com/transparency?lang=pcm)): what people agreed to per use, which organisations are approved, how many withdrawal notices are confirmed or still open, and the record check. Never shows anyone's personal information, and loads no fonts, scripts or trackers from anywhere else
-- **Panel** (`/panel`, admin key): register organisations, approve or remove uses, see open withdrawal notices
+- **Organisations must ask, the community decides**: organisations apply at [`/request-access`](https://ase-consent.onrender.com/request-access), saying why they need the data and what they will give back. The panel (`/panel`, admin key) approves or declines with a note. The organisation follows its request on a private link; if approved, its API key is created and shown there exactly once and is never stored readable. Optional email notices (SMTP) say a decision is ready, never containing the key
+- **Panel**: review access requests, remove an approval at any time (takes effect immediately), and see open withdrawal notices
 
 Background research is in [`research/`](research/).
 

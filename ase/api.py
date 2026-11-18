@@ -1,7 +1,7 @@
 """HTTP API.
 
 - /telegram/webhook: incoming Telegram messages.
-- /v1/admin/...: register organisations and record which uses they're approved for (admin key).
+- /request-access: organisations ask the community panel for access (web form); the panel decides at /panel.
 - /v1/consent/check: how an organisation's own system asks "may I use this person's data for X?" (its own key)
 - /v1/notices: withdrawals an organisation must act on, and confirm (its own key)
 - /v1/ledger/verify: anyone can check the consent record has not been tampered with.
@@ -47,7 +47,7 @@ def about():
         "name": "Àṣẹ",
         "about": "Community-controlled consent for health data, on WhatsApp and Telegram.",
         "source": "https://github.com/oluwa-sol/ase-consent",
-        "pages": ["/transparency", "/transparency?lang=pcm"],
+        "pages": ["/transparency", "/transparency?lang=pcm", "/request-access"],
         "endpoints": ["/health", "/v1/uses", "/v1/ledger/verify", "/v1/consent/check (org key)", "/v1/notices (org key)"],
     }
 
@@ -86,16 +86,6 @@ async def whatsapp_webhook(request: Request, x_hub_signature_256: str | None = H
     return {"ok": True}
 
 
-class NewDataUser(BaseModel):
-    name: str
-    contact: str = ""
-
-
-class Approval(BaseModel):
-    use: str
-    note: str = ""
-
-
 class Ack(BaseModel):
     note: str = ""
 
@@ -105,33 +95,6 @@ def _data_user(db, key: str | None):
     if du is None:
         raise HTTPException(status_code=401, detail="invalid or missing API key")
     return du
-
-
-@app.post("/v1/admin/data-users")
-def admin_register(body: NewDataUser, x_admin_key: str | None = Header(default=None)):
-    """Register an organisation. Its API key is shown once here and never again."""
-    _check_admin_key(x_admin_key)
-    with SessionLocal() as db:
-        du, key = datausers.register(db, body.name, body.contact)
-        db.commit()
-        return {"id": du.id, "name": du.name, "api_key": key,
-                "warning": "Store this key now. It cannot be shown again."}
-
-
-@app.post("/v1/admin/data-users/{data_user_id}/approve")
-def admin_approve(data_user_id: int, body: Approval, x_admin_key: str | None = Header(default=None)):
-    """Record that the community panel approved this organisation for one data use."""
-    _check_admin_key(x_admin_key)
-    with SessionLocal() as db:
-        du = db.get(DataUser, data_user_id)
-        if du is None:
-            raise HTTPException(status_code=404, detail="unknown data user")
-        try:
-            datausers.approve(db, du, body.use, body.note)
-        except ValueError as e:
-            raise HTTPException(status_code=404, detail=str(e))
-        db.commit()
-        return {"ok": True, "data_user": du.name, "approved_use": body.use}
 
 
 @app.get("/v1/consent/check")

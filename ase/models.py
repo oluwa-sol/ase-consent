@@ -80,6 +80,32 @@ class DataUser(Base):
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
+class AccessRequest(Base):
+    """An organisation asking the community for permission to use data.
+
+    The organisation follows its request through a private link. Only a hash of that link's token
+    is stored. On approval, the API key is created at the moment they first open the link and is
+    never stored readable.
+    """
+
+    __tablename__ = "access_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_name: Mapped[str] = mapped_column(String(120))
+    contact_name: Mapped[str] = mapped_column(String(120))
+    contact_email: Mapped[str] = mapped_column(String(200))
+    uses: Mapped[list] = mapped_column(JSON)
+    purpose: Mapped[str] = mapped_column(Text)
+    benefit: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="pending")  # pending | approved | declined
+    decision_note: Mapped[str] = mapped_column(Text, default="")
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    data_user_id: Mapped[int | None] = mapped_column(ForeignKey("data_users.id"), nullable=True)
+    key_issued: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
 class DataUserAccess(Base):
     """Which data uses an organisation has been approved for (by the community panel)."""
 

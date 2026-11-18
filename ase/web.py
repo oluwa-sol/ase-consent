@@ -13,9 +13,9 @@ from fastapi import APIRouter, Cookie, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
-from . import consent, datausers, stats
+from . import consent, datausers, requests_flow, stats
 from .db import SessionLocal
-from .models import DataUser, DataUserAccess, WithdrawalNotice
+from .models import AccessRequest, DataUser, DataUserAccess, WithdrawalNotice
 
 router = APIRouter()
 COOKIE = "ase_panel"
@@ -43,6 +43,10 @@ L = {
         "updated": "Updated",
         "source": "Open source",
         "lang": "Pidgin",
+        "requests": "Who has asked for the data",
+        "requests_intro": "Organisations must ask the community panel, explain why, and say what they will give back.",
+        "req_pending": "Waiting", "req_approved": "Approved", "req_declined": "Declined",
+        "org_cta": "Are you an organisation? Request access",
     },
     "pcm": {
         "tagline": "Community dey control how dem go use health information",
@@ -66,6 +70,10 @@ L = {
         "updated": "Last update",
         "source": "Open source",
         "lang": "English",
+        "requests": "Who don ask for the information",
+        "requests_intro": "Organisation must ask the community panel, explain why dem need am, and talk wetin dem go give back.",
+        "req_pending": "Dey wait", "req_approved": "Dem approve", "req_declined": "Dem no gree",
+        "org_cta": "You be organisation? Ask for permission here",
     },
 }
 
@@ -95,6 +103,7 @@ h3{font-size:1rem;margin:0}
 .uses{display:grid;gap:14px}
 .use{display:grid;gap:8px}
 .use+.use{border-top:1px solid var(--line);padding-top:14px}
+.use p{margin:0}
 .bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--line)}
 .bar span{display:block}
 .y{background:var(--yes)}.n{background:var(--no)}.w{background:var(--wd)}
@@ -141,6 +150,7 @@ def transparency(lang: str = "en"):
     tl = L[lang]
     with SessionLocal() as db:
         s = stats.summary(db)
+        rq = requests_flow.counts(db)
 
     use_html = []
     for u in s["uses"]:
@@ -176,6 +186,11 @@ def transparency(lang: str = "en"):
 <div class="nums"><div class="num"><b>{n['sent']}</b>{escape(tl['sent'])}</div>
 <div class="num"><b>{n['confirmed']}</b>{escape(tl['confirmed'])}</div>
 <div class="num"><b>{n['open']}</b>{escape(tl['open'])}</div></div><p class="lead" style="margin-top:10px">{notice_note}</p></section>
+<section class="card"><h2>{escape(tl['requests'])}</h2><p class="lead">{escape(tl['requests_intro'])}</p>
+<div class="nums"><div class="num"><b>{rq['approved']}</b>{escape(tl['req_approved'])}</div>
+<div class="num"><b>{rq['declined']}</b>{escape(tl['req_declined'])}</div>
+<div class="num"><b>{rq['pending']}</b>{escape(tl['req_pending'])}</div></div>
+<p style="margin:12px 0 0"><a href="/request-access">{escape(tl['org_cta'])}</a></p></section>
 <section class="card"><h2>{escape(tl['record'])}</h2>{led_html}</section>
 <p class="lead" style="font-size:.85rem">{escape(tl['updated'])}: {escape(s['generated_at'])} UTC</p>"""
     return _page(tl["title"], body, lang, switch)
@@ -218,7 +233,7 @@ def panel_logout():
 
 
 @router.get("/panel", response_class=HTMLResponse)
-def panel(ase_panel: str | None = Cookie(default=None), new_key: str = "", new_name: str = ""):
+def panel(ase_panel: str | None = Cookie(default=None), msg: str = ""):
     if not _admin_ok(ase_panel):
         return _login()
     now = datetime.now(timezone.utc)
@@ -230,15 +245,28 @@ def panel(ase_panel: str | None = Cookie(default=None), new_key: str = "", new_n
             access.setdefault(a.data_user_id, []).append(a.data_use_code)
         open_notices = list(db.scalars(select(WithdrawalNotice).where(WithdrawalNotice.acknowledged_at.is_(None))
                                        .order_by(WithdrawalNotice.created_at)))
+        waiting = requests_flow.pending(db)
         org_names = {o.id: o.name for o in orgs}
 
     titles = {u.code: u.text["en"]["title"] for u in uses}
-    use_opts = "".join(f'<option value="{u.code}">{escape(u.text["en"]["title"])}</option>' for u in uses)
-    org_opts = "".join(f'<option value="{o.id}">{escape(o.name)}</option>' for o in orgs)
 
-    shown_key = (f"""<section class="card"><h2>New organisation: {escape(new_name)}</h2>
-<p class="lead">Give this API key to them now. It will not be shown again.</p><p class="key">{escape(new_key)}</p></section>"""
-                 if new_key else "")
+    def days(dt):
+        dt = dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        return (now - dt).days
+
+    req_cards = []
+    for r in waiting:
+        wanted = ", ".join(escape(titles.get(c, c)) for c in r.uses)
+        req_cards.append(f"""<div class="use"><h3>{escape(r.org_name)}</h3>
+<p class="orgs">{escape(r.contact_name)} · {escape(r.contact_email)} · waiting {days(r.created_at)} day(s)</p>
+<p><b>Wants:</b> {wanted}</p>
+<p><b>Why they need it:</b><br>{escape(r.purpose)}</p>
+<p><b>What they will give back to the community:</b><br>{escape(r.benefit)}</p>
+<form method="post" action="/panel/requests/{r.id}/decide"><div class="row">
+<div><label for="note{r.id}">Note to the organisation (required if declining)</label><input id="note{r.id}" name="note" maxlength="1000"></div>
+<div style="display:flex;gap:8px"><button name="decision" value="approve">Approve</button>
+<button name="decision" value="decline" class="ghost">Decline</button></div></div></form></div>""")
+    requests_html = "".join(req_cards) or '<p class="lead">No requests waiting.</p>'
 
     rows = []
     for o in orgs:
@@ -247,54 +275,41 @@ def panel(ase_panel: str | None = Cookie(default=None), new_key: str = "", new_n
             f'<form method="post" action="/panel/revoke" style="display:inline-flex;gap:6px;align-items:center;margin:0 8px 6px 0">'
             f'<input type="hidden" name="data_user_id" value="{o.id}"><input type="hidden" name="use" value="{escape(c)}">'
             f'<span>{escape(titles.get(c, c))}</span><button class="ghost" title="Remove approval">remove</button></form>' for c in approved
-        ) or '<span class="lead">Nothing approved yet</span>'
+        ) or '<span class="lead">Nothing approved</span>'
         rows.append(f"<tr><td><b>{escape(o.name)}</b><br><span class='lead'>{escape(o.contact)}</span></td><td>{chips}</td></tr>")
 
-    def age(n):
-        created = n.created_at if n.created_at.tzinfo else n.created_at.replace(tzinfo=timezone.utc)
-        return (now - created).days
-
     notice_rows = "".join(
-        f"<tr><td>{escape(org_names.get(n.data_user_id, '?'))}</td><td>{escape(titles.get(n.data_use_code, n.data_use_code))}</td><td>{age(n)} day(s)</td></tr>"
+        f"<tr><td>{escape(org_names.get(n.data_user_id, '?'))}</td><td>{escape(titles.get(n.data_use_code, n.data_use_code))}</td><td>{days(n.created_at)} day(s)</td></tr>"
         for n in open_notices) or '<tr><td colspan="3" class="lead">No open notices. Every withdrawal has been confirmed.</td></tr>'
 
-    body = f"""{shown_key}
-<section class="card"><h2>Register an organisation</h2>
-<form method="post" action="/panel/register"><div class="row">
-<div><label for="n">Name</label><input id="n" name="name" required maxlength="120"></div>
-<div><label for="c">Contact (email or phone)</label><input id="c" name="contact" maxlength="200"></div>
-<div><button>Register</button></div></div></form></section>
-<section class="card"><h2>Approve a use</h2><p class="lead">Record a decision the community panel has made.</p>
-<form method="post" action="/panel/approve"><div class="row">
-<div><label for="o">Organisation</label><select id="o" name="data_user_id" required>{org_opts}</select></div>
-<div><label for="u">Use</label><select id="u" name="use" required>{use_opts}</select></div>
-<div><button>Approve</button></div></div></form></section>
+    flash = f'<p class="badge bad">{escape(msg)}</p>' if msg else ""
+    body = f"""{flash}
+<section class="card"><h2>Access requests ({len(waiting)})</h2>
+<p class="lead">Organisations ask here. Approving creates their access for exactly the uses listed; they collect their key once from their private link.</p>
+<div class="uses" style="margin-top:12px">{requests_html}</div></section>
 <section class="card"><h2>Organisations</h2><div class="scroll"><table><tr><th>Organisation</th><th>Approved for</th></tr>{''.join(rows) or '<tr><td colspan="2" class="lead">None yet</td></tr>'}</table></div></section>
 <section class="card"><h2>Open withdrawal notices</h2><div class="scroll"><table><tr><th>Organisation</th><th>Use</th><th>Open for</th></tr>{notice_rows}</table></div></section>
 <form method="post" action="/panel/logout"><button class="ghost">Sign out</button></form>"""
     return _page("Panel", body, switch='<a class="pill" href="/transparency">Public page</a>')
 
 
-@router.post("/panel/register", response_class=HTMLResponse)
-def panel_register(name: str = Form(...), contact: str = Form(""), ase_panel: str | None = Cookie(default=None)):
+@router.post("/panel/requests/{request_id}/decide")
+def panel_decide(request_id: int, decision: str = Form(...), note: str = Form(""),
+                 ase_panel: str | None = Cookie(default=None)):
     if not _admin_ok(ase_panel):
         return HTMLResponse(_login(), status_code=401)
     with SessionLocal() as db:
-        du, key = datausers.register(db, name.strip(), contact.strip())
-        db.commit()
-    # Shown once, directly in the response, never placed in a URL or stored in plain text.
-    return panel(ase_panel=ase_panel, new_key=key, new_name=du.name)
-
-
-@router.post("/panel/approve")
-def panel_approve(data_user_id: int = Form(...), use: str = Form(...), ase_panel: str | None = Cookie(default=None)):
-    if not _admin_ok(ase_panel):
-        return HTMLResponse(_login(), status_code=401)
-    with SessionLocal() as db:
-        du = db.get(DataUser, data_user_id)
-        if du:
-            datausers.approve(db, du, use)
+        req = db.get(AccessRequest, request_id)
+        try:
+            if req is None:
+                raise ValueError("unknown request")
+            if decision == "approve":
+                requests_flow.approve(db, req, note)
+            else:
+                requests_flow.decline(db, req, note)
             db.commit()
+        except ValueError as e:
+            return panel(ase_panel=ase_panel, msg=str(e))
     return _redirect_with()
 
 
@@ -308,3 +323,100 @@ def panel_revoke(data_user_id: int = Form(...), use: str = Form(...), ase_panel:
             datausers.revoke(db, du, use)
             db.commit()
     return _redirect_with()
+
+
+# ---------- organisations: request access ----------
+
+def _request_form(uses, error: str = "", values: dict | None = None) -> str:
+    v = values or {}
+    chosen = set(v.get("uses", []))
+    boxes = "".join(
+        f'<label style="display:flex;gap:10px;align-items:flex-start;color:var(--ink)">'
+        f'<input type="checkbox" name="uses" value="{u.code}" style="width:auto;margin-top:5px"'
+        f'{" checked" if u.code in chosen else ""}><span><b>{escape(u.text["en"]["title"])}</b><br>'
+        f'<span class="orgs">{escape(u.text["en"]["explain"])}</span></span></label>' for u in uses)
+    err = f'<p class="badge bad">{escape(error)}</p>' if error else ""
+    def val(k): return escape(v.get(k, ""))
+    return f"""<section><h2>Request access to community data</h2>
+<p class="lead">Àṣẹ data is controlled by the community. Tell the community panel who you are, why you need the data, and what you will give back. They decide. You will only ever receive data from people who said YES.</p></section>
+<section class="card">{err}
+<form method="post" action="/request-access">
+<div class="row"><div><label for="o">Organisation name</label><input id="o" name="org_name" required maxlength="120" value="{val('org_name')}"></div>
+<div><label for="cn">Contact person</label><input id="cn" name="contact_name" required maxlength="120" value="{val('contact_name')}"></div>
+<div><label for="ce">Contact email</label><input id="ce" name="contact_email" type="email" required maxlength="200" value="{val('contact_email')}"></div></div>
+<label style="margin-top:8px">Which uses are you asking for?</label>
+<div style="display:grid;gap:10px">{boxes}</div>
+<label for="p" style="margin-top:8px">Why do you need this data? What exactly will you do with it?</label>
+<textarea id="p" name="purpose" required maxlength="3000" rows="5" style="font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)">{val('purpose')}</textarea>
+<label for="b">What will you give back to the community?</label>
+<textarea id="b" name="benefit" required maxlength="3000" rows="4" style="font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)">{val('benefit')}</textarea>
+<div style="position:absolute;left:-5000px" aria-hidden="true"><label for="w">Leave this empty</label><input id="w" name="website" tabindex="-1" autocomplete="off"></div>
+<label style="display:flex;gap:10px;align-items:flex-start;color:var(--ink);margin-top:8px"><input type="checkbox" name="agree" value="yes" required style="width:auto;margin-top:5px">
+<span>We will check consent with Àṣẹ before every use, stop as soon as someone withdraws, and confirm every withdrawal notice.</span></label>
+<button style="margin-top:8px">Send request</button></form></section>"""
+
+
+@router.get("/request-access", response_class=HTMLResponse)
+def request_access_form():
+    with SessionLocal() as db:
+        uses = consent.active_uses(db)
+    return _page("Request access", _request_form(uses), switch='<a class="pill" href="/transparency">Public page</a>')
+
+
+@router.post("/request-access", response_class=HTMLResponse)
+def request_access_submit(org_name: str = Form(""), contact_name: str = Form(""), contact_email: str = Form(""),
+                          purpose: str = Form(""), benefit: str = Form(""), agree: str = Form(""),
+                          website: str = Form(""), uses: list[str] = Form(default=[])):
+    switch = '<a class="pill" href="/transparency">Public page</a>'
+    if website:  # bots fill the hidden field; people never see it
+        return _page("Request access", '<section class="card"><p>Thank you.</p></section>', switch=switch)
+    values = {"org_name": org_name, "contact_name": contact_name, "contact_email": contact_email,
+              "purpose": purpose, "benefit": benefit, "uses": uses}
+    with SessionLocal() as db:
+        all_uses = consent.active_uses(db)
+        try:
+            if agree != "yes":
+                raise ValueError("please agree to check consent and confirm every withdrawal")
+            req, token = requests_flow.submit(db, org_name=org_name, contact_name=contact_name,
+                                              contact_email=contact_email, uses=uses, purpose=purpose, benefit=benefit)
+            db.commit()
+        except ValueError as e:
+            return HTMLResponse(_page("Request access", _request_form(all_uses, str(e), values), switch=switch),
+                                status_code=400)
+    link = f"/request-access/status/{token}"
+    body = f"""<section class="card"><h2>Request sent</h2>
+<p>The community panel will review it. <b>Save this private link now.</b> It is the only way to see the decision and,
+if approved, to collect your API key. It is not stored anywhere readable, so it cannot be sent to you again.</p>
+<p class="key"><a href="{escape(link)}">{escape(link)}</a></p>
+<p class="lead">Add it to your bookmarks, or copy the full address from your browser after opening it.</p></section>"""
+    return _page("Request sent", body, switch=switch)
+
+
+@router.get("/request-access/status/{token}", response_class=HTMLResponse)
+def request_status(token: str):
+    switch = '<a class="pill" href="/transparency">Public page</a>'
+    with SessionLocal() as db:
+        req = requests_flow.by_token(db, token)
+        if req is None:
+            return HTMLResponse(_page("Request status", '<section class="card"><h2>Not found</h2><p class="lead">This link is not valid.</p></section>', switch=switch), status_code=404)
+        key = requests_flow.issue_key(db, req)
+        db.commit()
+        titles = {u.code: u.text["en"]["title"] for u in consent.active_uses(db)}
+        wanted = ", ".join(escape(titles.get(c, c)) for c in req.uses)
+        if req.status == "pending":
+            state = '<span class="badge" style="background:var(--bg)">Waiting for the community panel</span><p class="lead">Check this page again later.</p>'
+        elif req.status == "declined":
+            state = f'<span class="badge bad">Declined</span><p><b>Reason from the panel:</b><br>{escape(req.decision_note)}</p>'
+        elif key:
+            state = (f'<span class="badge good">✓ Approved</span>'
+                     + (f'<p><b>Note from the panel:</b><br>{escape(req.decision_note)}</p>' if req.decision_note else "")
+                     + f'<p><b>Your API key.</b> Copy it now and store it safely. <b>It will never be shown again</b>, not even to you on this page.</p>'
+                     f'<p class="key">{escape(key)}</p>'
+                     '<p class="lead">Send it as the <code>X-API-Key</code> header to <code>/v1/consent/check</code> before every use, '
+                     'and check <code>/v1/notices</code> regularly for withdrawals you must confirm.</p>')
+        else:
+            state = ('<span class="badge good">✓ Approved</span><p class="lead">Your API key was already shown once on this page. '
+                     'If it was lost, contact the community panel to request a new one.</p>')
+        body = f"""<section class="card"><h2>{escape(req.org_name)}</h2>
+<p class="lead">Asked for: {wanted}</p>{state}</section>"""
+    return _page("Request status", body, switch=switch)
