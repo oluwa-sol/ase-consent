@@ -33,6 +33,10 @@ Communities don't all use the same app. WhatsApp dominates in Nigeria and much o
 
 Àṣẹ is designed around the CARE principles for data governance (Collective benefit, Authority to control, Responsibility, Ethics), dynamic consent, and the consent standard in Nigeria's Data Protection Act 2023: freely given, specific, informed and clear.
 
+## Live demo
+
+Running at **https://ase-consent.onrender.com** (free hosting: the first request after a quiet spell can take up to a minute to wake the server). Anyone can check the consent record is untampered at [`/v1/ledger/verify`](https://ase-consent.onrender.com/v1/ledger/verify).
+
 ## Status
 
 Early development. Working today:
