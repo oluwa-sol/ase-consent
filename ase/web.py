@@ -47,6 +47,9 @@ L = {
         "requests_intro": "Organisations must ask the community panel, explain why, and say what they will give back.",
         "req_pending": "Waiting", "req_approved": "Approved", "req_declined": "Declined",
         "org_cta": "Are you an organisation? Request access",
+        "for_orgs": "For organisations",
+        "org_box": "Are you an organisation that wants to use this data? Look at what people have agreed to below, then ask the community panel.",
+        "org_btn": "Request access",
     },
     "pcm": {
         "tagline": "Community dey control how dem go use health information",
@@ -74,6 +77,9 @@ L = {
         "requests_intro": "Organisation must ask the community panel, explain why dem need am, and talk wetin dem go give back.",
         "req_pending": "Dey wait", "req_approved": "Dem approve", "req_declined": "Dem no gree",
         "org_cta": "You be organisation? Ask for permission here",
+        "for_orgs": "For organisations",
+        "org_box": "You be organisation wey wan use this information? First look wetin people agree to for down, then ask the community panel.",
+        "org_btn": "Ask for permission",
     },
 }
 
@@ -119,6 +125,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding-bottom:32px
 form{display:grid;gap:8px} label{font-size:.9rem;color:var(--muted)}
 input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
 button{font:inherit;font-weight:600;padding:9px 14px;border:0;border-radius:8px;background:var(--indigo-2);color:#fff;cursor:pointer}
+a.btn{display:inline-block;font-weight:600;padding:9px 14px;border-radius:8px;background:var(--indigo-2);color:#fff;text-decoration:none}
 button.ghost{background:transparent;color:var(--no);border:1px solid var(--line);padding:4px 10px;font-weight:500}
 table{width:100%;border-collapse:collapse;font-size:.92rem} td,th{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
 .scroll{overflow-x:auto}.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;align-items:end}
@@ -177,9 +184,12 @@ def transparency(lang: str = "en"):
                 f'<span class="badge bad">! {escape(tl["broken"])}</span><p class="lead">{escape(tl["record_bad"].format(i=led["broken_at"]))}</p>')
 
     other = "pcm" if lang == "en" else "en"
-    switch = f'<a class="pill" href="/transparency?lang={other}">{escape(tl["lang"])}</a>'
+    switch = (f'<a class="pill" href="/request-access">{escape(tl["for_orgs"])}</a>'
+              f'<a class="pill" href="/transparency?lang={other}">{escape(tl["lang"])}</a>')
     body = f"""
 <section><h2>{escape(tl['title'])}</h2><p class="lead">{escape(tl['intro'])}</p></section>
+<section class="card" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-color:var(--ochre)">
+<p style="margin:0;max-width:60ch">{escape(tl['org_box'])}</p><a class="btn" href="/request-access">{escape(tl['org_btn'])} →</a></section>
 <section class="card"><span class="big">{s['people']}</span> {escape(tl['people'])}</section>
 <section class="card"><h2>{escape(tl['uses'])}</h2><div class="uses">{''.join(use_html)}</div></section>
 <section class="card"><h2>{escape(tl['notices'])}</h2><p class="lead">{escape(tl['notices_intro'])}</p>
@@ -360,14 +370,14 @@ def _request_form(uses, error: str = "", values: dict | None = None) -> str:
 def request_access_form():
     with SessionLocal() as db:
         uses = consent.active_uses(db)
-    return _page("Request access", _request_form(uses), switch='<a class="pill" href="/transparency">Public page</a>')
+    return _page("Request access", _request_form(uses), switch='<a class="pill" href="/transparency">← See what people agreed to</a>')
 
 
 @router.post("/request-access", response_class=HTMLResponse)
 def request_access_submit(org_name: str = Form(""), contact_name: str = Form(""), contact_email: str = Form(""),
                           purpose: str = Form(""), benefit: str = Form(""), agree: str = Form(""),
                           website: str = Form(""), uses: list[str] = Form(default=[])):
-    switch = '<a class="pill" href="/transparency">Public page</a>'
+    switch = '<a class="pill" href="/transparency">← See what people agreed to</a>'
     if website:  # bots fill the hidden field; people never see it
         return _page("Request access", '<section class="card"><p>Thank you.</p></section>', switch=switch)
     values = {"org_name": org_name, "contact_name": contact_name, "contact_email": contact_email,
@@ -394,7 +404,7 @@ if approved, to collect your API key. It is not stored anywhere readable, so it 
 
 @router.get("/request-access/status/{token}", response_class=HTMLResponse)
 def request_status(token: str):
-    switch = '<a class="pill" href="/transparency">Public page</a>'
+    switch = '<a class="pill" href="/transparency">← See what people agreed to</a>'
     with SessionLocal() as db:
         req = requests_flow.by_token(db, token)
         if req is None:
