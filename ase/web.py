@@ -94,6 +94,7 @@ h3{font-size:1rem;margin:0}
 .big{font-family:Georgia,serif;font-size:2.6rem;line-height:1;color:var(--ochre)}
 .uses{display:grid;gap:14px}
 .use{display:grid;gap:8px}
+.use+.use{border-top:1px solid var(--line);padding-top:14px}
 .bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--line)}
 .bar span{display:block}
 .y{background:var(--yes)}.n{background:var(--no)}.w{background:var(--wd)}
