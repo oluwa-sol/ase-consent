@@ -67,6 +67,22 @@ class ConsentEvent(Base):
     hash: Mapped[str] = mapped_column(String(64), unique=True)
 
 
+class LinkCode(Base):
+    """One-time code that joins a second channel to an existing person.
+
+    The code is only ever shown inside a channel the person already controls,
+    so knowing someone's reference (ASE-XXXXXX) is never enough to take over their record.
+    """
+
+    __tablename__ = "link_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey("persons.id"), index=True)
+    code: Mapped[str] = mapped_column(String(8), index=True)
+    expires_at: Mapped[datetime] = mapped_column()
+    used: Mapped[bool] = mapped_column(default=False)
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (UniqueConstraint("person_id", "channel"),)

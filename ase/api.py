@@ -9,10 +9,11 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 
 from . import consent, ledger
-from .channels import telegram
+from .channels import telegram, whatsapp
 from .db import SessionLocal, init_db
 from .models import DataUse, Person
 from .seed import seed_uses
@@ -48,6 +49,25 @@ async def telegram_webhook(request: Request,
     if secret and x_telegram_bot_api_secret_token != secret:
         raise HTTPException(status_code=401, detail="bad secret")
     telegram.process_update(await request.json())
+    return {"ok": True}
+
+
+@app.get("/whatsapp/webhook")
+def whatsapp_verify(request: Request):
+    """Meta calls this once when you save the webhook URL, to check you own it."""
+    q = request.query_params
+    expected = os.environ.get("WHATSAPP_VERIFY_TOKEN", "")
+    if q.get("hub.mode") == "subscribe" and expected and q.get("hub.verify_token") == expected:
+        return PlainTextResponse(q.get("hub.challenge", ""))
+    raise HTTPException(status_code=403, detail="verification failed")
+
+
+@app.post("/whatsapp/webhook")
+async def whatsapp_webhook(request: Request, x_hub_signature_256: str | None = Header(default=None)):
+    raw = await request.body()
+    if not whatsapp.verify_signature(raw, x_hub_signature_256):
+        raise HTTPException(status_code=401, detail="bad signature")
+    whatsapp.process_payload(await request.json())
     return {"ok": True}
 
 

@@ -1,0 +1,73 @@
+from datetime import timedelta
+
+from ase import consent
+from ase.conversation import handle_message
+from ase.models import LinkCode, utcnow
+
+
+def tg(db, text):
+    return handle_message(db, "telegram", "tg-1", text)
+
+
+def wa(db, text, who="wa-1"):
+    return handle_message(db, "whatsapp", who, text)
+
+
+def _telegram_user_with_choices(db):
+    tg(db, "hi")
+    tg(db, "1")
+    for _ in range(4):
+        tg(db, "yes")
+    return consent.get_or_create_person(db, "telegram", "tg-1")
+
+
+def _code_from(reply: str) -> str:
+    return reply.split("LINK ")[1].split()[0]
+
+
+def test_link_whatsapp_to_existing_telegram_record(db):
+    person = _telegram_user_with_choices(db)
+    code = _code_from(tg(db, "5")[0])
+    out = wa(db, f"LINK {code}")
+    assert person.reference in out[0]
+    linked = consent.get_or_create_person(db, "whatsapp", "wa-1")
+    assert linked.id == person.id
+    assert consent.is_allowed(db, linked, "ai_training")
+
+
+def test_withdraw_on_one_app_applies_everywhere(db):
+    person = _telegram_user_with_choices(db)
+    wa(db, f"LINK {_code_from(tg(db, '5')[0])}")
+    wa(db, "3")
+    wa(db, "yes")
+    assert not any(consent.is_allowed(db, person, u.code) for u in consent.active_uses(db))
+
+
+def test_code_works_only_once(db):
+    _telegram_user_with_choices(db)
+    code = _code_from(tg(db, "5")[0])
+    wa(db, f"LINK {code}")
+    assert "wrong or has expired" in wa(db, f"LINK {code}", who="wa-2")[0]
+
+
+def test_expired_code_rejected(db):
+    _telegram_user_with_choices(db)
+    code = _code_from(tg(db, "5")[0])
+    link = db.query(LinkCode).filter_by(code=code).one()
+    link.expires_at = utcnow() - timedelta(minutes=1)
+    db.flush()
+    assert "wrong or has expired" in wa(db, f"LINK {code}")[0]
+
+
+def test_wrong_code_rejected(db):
+    _telegram_user_with_choices(db)
+    assert "wrong or has expired" in wa(db, "LINK 000000")[0]
+
+
+def test_never_merges_two_existing_records(db):
+    _telegram_user_with_choices(db)
+    wa(db, "hi")
+    wa(db, "1")
+    wa(db, "no")  # WhatsApp user now has a choice of their own
+    code = _code_from(tg(db, "5")[0])
+    assert "already has its own saved choices" in wa(db, f"LINK {code}")[0]

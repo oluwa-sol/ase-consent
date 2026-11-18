@@ -57,6 +57,59 @@ def is_allowed(db: Session, person: Person, use_code: str) -> bool:
     return bool(e and e.decision == "granted")
 
 
+LINK_MINUTES = 10
+
+
+def create_link_code(db: Session, person: Person) -> str:
+    """Make a 6-digit code, valid for LINK_MINUTES, that lets another channel join this person."""
+    from datetime import timedelta
+    from .models import LinkCode, utcnow
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    db.add(LinkCode(person_id=person.id, code=code, expires_at=utcnow() + timedelta(minutes=LINK_MINUTES)))
+    db.flush()
+    return code
+
+
+def redeem_link_code(db: Session, code: str, channel: str, external_id: str) -> tuple[str, Person | None]:
+    """Attach (channel, external_id) to the person who generated `code`.
+
+    Returns (status, person). status is one of:
+      "linked", "invalid" (unknown/used/expired), "same" (already that person),
+      "has_choices" (this channel already holds its own consent record, we never merge two records).
+    """
+    from .models import Conversation, LinkCode, utcnow
+
+    link = db.scalars(select(LinkCode).where(LinkCode.code == code.strip(), LinkCode.used.is_(False))
+                      .order_by(LinkCode.id.desc())).first()
+    now = utcnow()
+    if link is None:
+        return "invalid", None
+    expires = link.expires_at if link.expires_at.tzinfo else link.expires_at.replace(tzinfo=now.tzinfo)
+    if expires < now:
+        return "invalid", None
+    target = db.get(Person, link.person_id)
+
+    ident = db.scalars(select(ChannelIdentity).where(
+        ChannelIdentity.channel == channel, ChannelIdentity.external_id == str(external_id))).first()
+    if ident and ident.person_id == target.id:
+        return "same", target
+    if ident:
+        if latest_decisions(db, db.get(Person, ident.person_id)):
+            return "has_choices", None
+        old_person_id = ident.person_id
+        ident.person_id = target.id
+        for conv in db.scalars(select(Conversation).where(Conversation.person_id == old_person_id)):
+            db.delete(conv)
+        db.flush()
+        db.delete(db.get(Person, old_person_id))
+    else:
+        db.add(ChannelIdentity(person_id=target.id, channel=channel, external_id=str(external_id)))
+    link.used = True
+    db.flush()
+    return "linked", target
+
+
 def withdraw_all(db: Session, person: Person, channel: str) -> list[str]:
     """Withdraw every use the person had granted. Returns the codes withdrawn."""
     withdrawn = []

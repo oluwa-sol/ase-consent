@@ -39,7 +39,8 @@ Early development. Working today:
 
 - Channel-agnostic consent core with a **hash-chained, append-only consent ledger** (any edit or deletion is detected)
 - Chat flow in **English and Nigerian Pidgin**: consent per use, view choices, change them, withdraw everything (with confirmation)
-- **Telegram** connector (webhook and local polling). WhatsApp connector next.
+- **Telegram** connector (webhook and local polling) and **WhatsApp** connector (Cloud API, every webhook checked against Meta's signature)
+- **One record across apps**: a person links WhatsApp and Telegram with a one-time code shown only inside an app they already use. Two existing records are never merged
 - **Consent check API** for organisations: `GET /v1/consent/check?reference=ASE-XXXXXX&use=ai_training` answers only "allowed or not", never anything else about the person
 - Public **ledger verification**: `GET /v1/ledger/verify`
 
@@ -61,6 +62,8 @@ python scripts/telegram_polling.py
 set ASE_ORG_API_KEY=choose-a-key
 uvicorn ase.api:app --reload
 ```
+
+WhatsApp needs a public HTTPS URL (deploy, or a tunnel such as cloudflared) and these settings from your own Meta app: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`. Point the webhook at `/whatsapp/webhook` and subscribe to the `messages` field on the WhatsApp Business Account object.
 
 ## Stack
 

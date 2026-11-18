@@ -58,6 +58,17 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
     msg = (text or "").strip()
     low = msg.lower()
 
+    # "LINK 123456" works from any step, including a brand-new chat on the second app.
+    if low.startswith("link ") and low[5:].strip().isdigit():
+        status, target = consent.redeem_link_code(db, low[5:].strip(), channel, external_id)
+        if status in ("linked", "same"):
+            new_conv = _conversation(db, target, channel)
+            new_conv.step = "menu"
+            key = "linked" if status == "linked" else "link_same"
+            return [t(key, target.language, ref=target.reference), t("menu", target.language)]
+        key = "link_invalid" if status == "invalid" else "link_has_choices"
+        return [t(key, lang)]
+
     if conv.step == "new":
         conv.step = "language"
         return [t("welcome", "en")]
@@ -106,6 +117,9 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
         return [_summary(db, person), t("menu", lang)]
     if msg == "2" or low in {"change"}:
         return _start_asking(db, person, conv)
+    if msg == "5" or low in {"link", "link app"}:
+        code = consent.create_link_code(db, person)
+        return [t("link_code", lang, code=code, mins=consent.LINK_MINUTES)]
     if msg == "4" or low in {"language", "lang"}:
         conv.step = "language"
         return [t("welcome", "en")]
