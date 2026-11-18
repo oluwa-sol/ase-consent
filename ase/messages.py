@@ -52,6 +52,10 @@ T = {
         "en": "Sorry, I didn't get that. Send MENU any time to see your options.",
         "pcm": "I no understand that one. Send MENU any time wey you wan see wetin you fit do.",
     },
+    "bye": {
+        "en": "Bye! Your choices are saved. Send MENU any time you need to check or change them.",
+        "pcm": "Bye bye! Your choice dem dey safe. Send MENU any time wey you wan check or change am.",
+    },
     "ack": {
         "en": "Okay 👍",
         "pcm": "Okay 👍",

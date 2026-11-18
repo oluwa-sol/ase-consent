@@ -89,3 +89,9 @@ def test_ok_and_random_text_do_not_dump_the_menu(db):
     out = chat(db, "blah blah")
     assert "didn't get that" in out[0] and "What would you like to do?" not in out[0]
     assert "What would you like to do?" in chat(db, "hi")[0]
+
+
+def test_goodbye(db):
+    _complete_all_yes(db)
+    assert "Your choices are saved" in chat(db, "Bye!")[0]
+    assert "Your choices are saved" in chat(db, "good night")[0]

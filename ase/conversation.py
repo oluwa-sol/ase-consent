@@ -13,6 +13,7 @@ from .models import Conversation, Person
 
 RESET_WORDS = {"start", "/start", "hi", "hello", "menu", "help"}
 WITHDRAW_WORDS = {"withdraw", "stop", "cancel all"}
+BYE_WORDS = {"bye", "goodbye", "good bye", "bye bye", "byee", "see you", "see you later", "later", "good night", "goodnight", "ok bye", "make we see later", "ó dàbọ̀", "o dabo"}
 ACK_WORDS = {"ok", "okay", "ok thanks", "thanks", "thank you", "alright", "fine", "cool", "noted", "e don do", "i don hear"}
 
 
@@ -131,6 +132,8 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
         return [t("welcome", "en")]
     if low.strip(".!") in RESET_WORDS:
         return [t("menu", lang)]
+    if low.strip(".!") in BYE_WORDS:
+        return [t("bye", lang)]
     if low.strip(".!") in ACK_WORDS:
         return [t("ack", lang)]
     return [t("not_understood", lang)]
