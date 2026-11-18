@@ -88,6 +88,10 @@ T = {
         "en": "Done. You have withdrawn {n} permission(s). From now on, nobody is allowed to use your information for these.",
         "pcm": "E don do. You don withdraw {n} permission. From now go, nobody get right to use your information for these ones again.",
     },
+    "notified": {
+        "en": "We have told {k} organisation(s) that used your information to stop. They must confirm they have stopped.",
+        "pcm": "We don tell {k} organisation wey dey use your information make dem stop. Dem must confirm say dem don stop.",
+    },
     "withdraw_none": {
         "en": "You have not given any YES, so there is nothing to withdraw.",
         "pcm": "You never talk YES, so nothing dey to withdraw.",

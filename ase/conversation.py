@@ -110,11 +110,13 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
         conv.step = "menu"
         if not answer:
             return [_join(t("cancelled", lang), t("menu_hint", lang))]
-        withdrawn = consent.withdraw_all(db, person, channel)
+        withdrawn, notified = consent.withdraw_everything(db, person, channel)
         if not withdrawn:
             return [_join(t("withdraw_none", lang), t("menu_hint", lang))]
-        # Week 3: notify every approved data user here (withdrawal that travels).
-        return [_join(t("withdrawn", lang, n=len(withdrawn)), _summary(db, person), t("menu_hint", lang))]
+        parts = [t("withdrawn", lang, n=len(withdrawn))]
+        if notified:
+            parts.append(t("notified", lang, k=notified))
+        return [_join(*parts, _summary(db, person), t("menu_hint", lang))]
 
     # step == "menu"
     if low in WITHDRAW_WORDS or msg == "3":

@@ -1,7 +1,9 @@
 """HTTP API.
 
 - /telegram/webhook: incoming Telegram messages.
-- /v1/consent/check: how an organisation's own system asks "may I use this person's data for X?"
+- /v1/admin/...: register organisations and record which uses they're approved for (admin key).
+- /v1/consent/check: how an organisation's own system asks "may I use this person's data for X?" (its own key)
+- /v1/notices: withdrawals an organisation must act on, and confirm (its own key)
 - /v1/ledger/verify: anyone can check the consent record has not been tampered with.
 """
 
@@ -10,12 +12,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel
 from sqlalchemy import select
 
-from . import consent, ledger
+from . import consent, datausers, ledger
 from .channels import telegram, whatsapp
 from .db import SessionLocal, init_db
-from .models import DataUse, Person
+from .models import DataUse, DataUser, Person
 from .seed import seed_uses
 
 
@@ -31,8 +34,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Àṣẹ", version="0.1.0", lifespan=lifespan)
 
 
-def _check_org_key(key: str | None) -> None:
-    expected = os.environ.get("ASE_ORG_API_KEY", "")
+def _check_admin_key(key: str | None) -> None:
+    expected = os.environ.get("ASE_ADMIN_KEY") or os.environ.get("ASE_ORG_API_KEY", "")
     if not expected or key != expected:
         raise HTTPException(status_code=401, detail="invalid or missing API key")
 
@@ -43,7 +46,7 @@ def about():
         "name": "Àṣẹ",
         "about": "Community-controlled consent for health data, on WhatsApp and Telegram.",
         "source": "https://github.com/oluwa-sol/ase-consent",
-        "endpoints": ["/health", "/v1/uses", "/v1/ledger/verify", "/v1/consent/check (API key)"],
+        "endpoints": ["/health", "/v1/uses", "/v1/ledger/verify", "/v1/consent/check (org key)", "/v1/notices (org key)"],
     }
 
 
@@ -81,25 +84,86 @@ async def whatsapp_webhook(request: Request, x_hub_signature_256: str | None = H
     return {"ok": True}
 
 
+class NewDataUser(BaseModel):
+    name: str
+    contact: str = ""
+
+
+class Approval(BaseModel):
+    use: str
+    note: str = ""
+
+
+class Ack(BaseModel):
+    note: str = ""
+
+
+def _data_user(db, key: str | None):
+    du = datausers.by_key(db, key)
+    if du is None:
+        raise HTTPException(status_code=401, detail="invalid or missing API key")
+    return du
+
+
+@app.post("/v1/admin/data-users")
+def admin_register(body: NewDataUser, x_admin_key: str | None = Header(default=None)):
+    """Register an organisation. Its API key is shown once here and never again."""
+    _check_admin_key(x_admin_key)
+    with SessionLocal() as db:
+        du, key = datausers.register(db, body.name, body.contact)
+        db.commit()
+        return {"id": du.id, "name": du.name, "api_key": key,
+                "warning": "Store this key now. It cannot be shown again."}
+
+
+@app.post("/v1/admin/data-users/{data_user_id}/approve")
+def admin_approve(data_user_id: int, body: Approval, x_admin_key: str | None = Header(default=None)):
+    """Record that the community panel approved this organisation for one data use."""
+    _check_admin_key(x_admin_key)
+    with SessionLocal() as db:
+        du = db.get(DataUser, data_user_id)
+        if du is None:
+            raise HTTPException(status_code=404, detail="unknown data user")
+        try:
+            datausers.approve(db, du, body.use, body.note)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        db.commit()
+        return {"ok": True, "data_user": du.name, "approved_use": body.use}
+
+
 @app.get("/v1/consent/check")
 def consent_check(reference: str, use: str, x_api_key: str | None = Header(default=None)):
-    """Ask before using data. Answers only allowed/not allowed, never anything else about the person."""
-    _check_org_key(x_api_key)
+    """Ask before using data. Answers only allowed or not, never anything else about the person.
+
+    Allowed needs both: the organisation is approved for this use, and the person said YES.
+    An "allowed" answer is logged, so the organisation is notified if the person later withdraws.
+    """
     with SessionLocal() as db:
+        du = _data_user(db, x_api_key)
         if db.get(DataUse, use) is None:
             raise HTTPException(status_code=404, detail="unknown data use")
         person = db.scalars(select(Person).where(Person.reference == reference.upper())).first()
-        if person is None:
-            return {"reference": reference, "use": use, "allowed": False, "decision": None}
-        e = consent.latest_decisions(db, person).get(use)
-        return {
-            "reference": person.reference,
-            "use": use,
-            "allowed": bool(e and e.decision == "granted"),
-            "decision": e.decision if e else None,
-            "decided_at": e.created_at if e else None,
-            "record_hash": e.hash if e else None,
-        }
+        result = datausers.check(db, du, person, use)
+        db.commit()
+        return {"reference": person.reference if person else reference, "use": use, **result}
+
+
+@app.get("/v1/notices")
+def notices(x_api_key: str | None = Header(default=None)):
+    """Withdrawals this organisation still has to act on."""
+    with SessionLocal() as db:
+        return datausers.pending_notices(db, _data_user(db, x_api_key))
+
+
+@app.post("/v1/notices/{notice_id}/ack")
+def notice_ack(notice_id: int, body: Ack, x_api_key: str | None = Header(default=None)):
+    """Confirm the organisation has stopped using (and removed) this person's data for this use."""
+    with SessionLocal() as db:
+        if not datausers.acknowledge(db, _data_user(db, x_api_key), notice_id, body.note):
+            raise HTTPException(status_code=404, detail="unknown notice")
+        db.commit()
+        return {"ok": True}
 
 
 @app.get("/v1/ledger/verify")

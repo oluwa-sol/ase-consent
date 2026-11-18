@@ -45,7 +45,9 @@ Early development. Working today:
 - Chat flow in **English and Nigerian Pidgin**: consent per use, view choices, change them, withdraw everything (with confirmation)
 - **Telegram** connector (webhook and local polling) and **WhatsApp** connector (Cloud API, every webhook checked against Meta's signature)
 - **One record across apps**: a person links WhatsApp and Telegram with a one-time code shown only inside an app they already use. Two existing records are never merged
-- **Consent check API** for organisations: `GET /v1/consent/check?reference=ASE-XXXXXX&use=ai_training` answers only "allowed or not", never anything else about the person
+- **Organisations as data users**: each has its own API key (stored hashed) and is approved for specific uses only
+- **Consent check API**: `GET /v1/consent/check?reference=ASE-XXXXXX&use=ai_training` answers only "allowed or not". Allowed needs both an approved organisation and the person's YES, and every "allowed" is logged
+- **Withdrawal that travels**: when someone withdraws or changes a YES to NO, every organisation that used their data for that purpose gets a notice (`GET /v1/notices`) and must confirm it has stopped (`POST /v1/notices/{id}/ack`). The person is told how many organisations were notified
 - Public **ledger verification**: `GET /v1/ledger/verify`
 
 Background research is in [`research/`](research/).

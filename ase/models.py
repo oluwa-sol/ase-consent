@@ -67,6 +67,59 @@ class ConsentEvent(Base):
     hash: Mapped[str] = mapped_column(String(64), unique=True)
 
 
+class DataUser(Base):
+    """An organisation that wants to use people's data (a research team, an NGO, an AI project)."""
+
+    __tablename__ = "data_users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(120))
+    contact: Mapped[str] = mapped_column(String(200), default="")
+    api_key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class DataUserAccess(Base):
+    """Which data uses an organisation has been approved for (by the community panel)."""
+
+    __tablename__ = "data_user_access"
+    __table_args__ = (UniqueConstraint("data_user_id", "data_use_code"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    data_user_id: Mapped[int] = mapped_column(ForeignKey("data_users.id"), index=True)
+    data_use_code: Mapped[str] = mapped_column(ForeignKey("data_uses.code"))
+    approved_at: Mapped[datetime] = mapped_column(default=utcnow)
+    note: Mapped[str] = mapped_column(Text, default="")
+
+
+class DataAccessLog(Base):
+    """Every time an organisation checked a person and was told "allowed". This is how we know who to notify."""
+
+    __tablename__ = "data_access_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    data_user_id: Mapped[int] = mapped_column(ForeignKey("data_users.id"), index=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey("persons.id"), index=True)
+    data_use_code: Mapped[str] = mapped_column(ForeignKey("data_uses.code"))
+    at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class WithdrawalNotice(Base):
+    """Tells an organisation to stop using one person's data for one use. Stays open until they confirm."""
+
+    __tablename__ = "withdrawal_notices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    data_user_id: Mapped[int] = mapped_column(ForeignKey("data_users.id"), index=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey("persons.id"))
+    data_use_code: Mapped[str] = mapped_column(ForeignKey("data_uses.code"))
+    consent_event_id: Mapped[int] = mapped_column(ForeignKey("consent_events.id"))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    ack_note: Mapped[str] = mapped_column(Text, default="")
+
+
 class LinkCode(Base):
     """One-time code that joins a second channel to an existing person.
 

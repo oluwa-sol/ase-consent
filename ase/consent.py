@@ -33,7 +33,12 @@ def active_uses(db: Session) -> list[DataUse]:
 
 
 def record(db: Session, person: Person, use: DataUse, decision: str, channel: str) -> ConsentEvent:
-    return ledger.append(
+    """Save a decision. If it turns an earlier YES into a NO, every organisation using that data is notified.
+
+    The returned event carries `.notified`: how many organisations were told to stop.
+    """
+    previous = latest_decisions(db, person).get(use.code)
+    event = ledger.append(
         db,
         person_id=person.id,
         data_use_code=use.code,
@@ -42,6 +47,11 @@ def record(db: Session, person: Person, use: DataUse, decision: str, channel: st
         language=person.language,
         notice_version=use.notice_version,
     )
+    event.notified = 0
+    if decision != "granted" and previous is not None and previous.decision == "granted":
+        from .datausers import notify_withdrawal
+        event.notified = notify_withdrawal(db, event)
+    return event
 
 
 def latest_decisions(db: Session, person: Person) -> dict[str, ConsentEvent]:
@@ -110,12 +120,18 @@ def redeem_link_code(db: Session, code: str, channel: str, external_id: str) -> 
     return "linked", target
 
 
-def withdraw_all(db: Session, person: Person, channel: str) -> list[str]:
-    """Withdraw every use the person had granted. Returns the codes withdrawn."""
-    withdrawn = []
+def withdraw_everything(db: Session, person: Person, channel: str) -> tuple[list[str], int]:
+    """Withdraw every use the person had granted. Returns (codes withdrawn, organisations notified)."""
+    withdrawn, notified = [], 0
     uses = {u.code: u for u in active_uses(db)}
     for code, e in latest_decisions(db, person).items():
         if e.decision == "granted" and code in uses:
-            record(db, person, uses[code], "withdrawn", channel)
+            event = record(db, person, uses[code], "withdrawn", channel)
             withdrawn.append(code)
-    return withdrawn
+            notified += event.notified
+    return withdrawn, notified
+
+
+def withdraw_all(db: Session, person: Person, channel: str) -> list[str]:
+    """Withdraw every use the person had granted. Returns the codes withdrawn."""
+    return withdraw_everything(db, person, channel)[0]
