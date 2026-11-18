@@ -44,6 +44,18 @@ T = {
         "en": "What would you like to do?\n1 See my choices\n2 Change my choices\n3 Withdraw everything\n4 Change language\n5 Link another app (WhatsApp or Telegram)",
         "pcm": "Wetin you wan do?\n1 See my choice dem\n2 Change my choice dem\n3 Withdraw everything\n4 Change language\n5 Join another app (WhatsApp or Telegram)",
     },
+    "menu_hint": {
+        "en": "Send MENU any time to see your options.",
+        "pcm": "Send MENU any time wey you wan see wetin you fit do.",
+    },
+    "not_understood": {
+        "en": "Sorry, I didn't get that. Send MENU any time to see your options.",
+        "pcm": "I no understand that one. Send MENU any time wey you wan see wetin you fit do.",
+    },
+    "ack": {
+        "en": "Okay 👍",
+        "pcm": "Okay 👍",
+    },
     "link_code": {
         "en": "Your link code is {code}. It works for {mins} minutes.\n\nOn your other app (WhatsApp or Telegram), message Àṣẹ: LINK {code}\n\nBoth apps will then share the same choices. Never share this code with anyone.",
         "pcm": "Your link code na {code}. E go work for {mins} minutes.\n\nFor your other app (WhatsApp or Telegram), send this to Àṣẹ: LINK {code}\n\nThe two apps go kon carry the same choice. No show this code to anybody.",

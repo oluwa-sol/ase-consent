@@ -16,8 +16,11 @@ def test_full_first_time_flow_in_pidgin(db):
     chat(db, "no")
     chat(db, "i gree")
     final = chat(db, "no")
+    assert len(final) == 1, "save confirmation, summary and hint must be one message"
     assert "We don save your choice" in final[0]
-    assert "code ASE-" in final[1]
+    assert "code ASE-" in final[0]
+    assert "Send MENU" in final[0]
+    assert "Wetin you wan do?" not in final[0]
     p = consent.get_or_create_person(db, "telegram", "555")
     assert consent.is_allowed(db, p, "community_research")
     assert not consent.is_allowed(db, p, "partner_sharing")
@@ -71,3 +74,18 @@ def test_returning_user_choosing_language_goes_to_menu(db):
     chat(db, "4")
     out = chat(db, "1")
     assert "What would you like to do?" in out[0]
+
+
+def test_menu_only_when_asked(db):
+    _complete_all_yes(db)
+    out = chat(db, "1")
+    assert len(out) == 1 and "What would you like to do?" not in out[0]
+    assert "What would you like to do?" in chat(db, "MENU")[0]
+
+
+def test_ok_and_random_text_do_not_dump_the_menu(db):
+    _complete_all_yes(db)
+    assert chat(db, "ok") == ["Okay 👍"]
+    out = chat(db, "blah blah")
+    assert "didn't get that" in out[0] and "What would you like to do?" not in out[0]
+    assert "What would you like to do?" in chat(db, "hi")[0]

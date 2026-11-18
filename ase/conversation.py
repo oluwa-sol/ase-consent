@@ -13,6 +13,7 @@ from .models import Conversation, Person
 
 RESET_WORDS = {"start", "/start", "hi", "hello", "menu", "help"}
 WITHDRAW_WORDS = {"withdraw", "stop", "cancel all"}
+ACK_WORDS = {"ok", "okay", "ok thanks", "thanks", "thank you", "alright", "fine", "cool", "noted", "e don do", "i don hear"}
 
 
 def _conversation(db: Session, person: Person, channel: str) -> Conversation:
@@ -46,6 +47,11 @@ def _summary(db: Session, person: Person) -> str:
     return "\n".join(lines)
 
 
+def _join(*parts: str) -> str:
+    """Several pieces of text sent as ONE chat message, so the phone buzzes once."""
+    return "\n\n".join(parts)
+
+
 def _start_asking(db: Session, person: Person, conv: Conversation) -> list[str]:
     conv.step, conv.use_index = "asking", 0
     return [_ask(db, person, conv)]
@@ -65,7 +71,7 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
             new_conv = _conversation(db, target, channel)
             new_conv.step = "menu"
             key = "linked" if status == "linked" else "link_same"
-            return [t(key, target.language, ref=target.reference), t("menu", target.language)]
+            return [_join(t(key, target.language, ref=target.reference), t("menu_hint", target.language))]
         key = "link_invalid" if status == "invalid" else "link_has_choices"
         return [t(key, lang)]
 
@@ -94,7 +100,7 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
         if conv.use_index < len(uses):
             return [_ask(db, person, conv)]
         conv.step = "menu"
-        return [t("done", lang), _summary(db, person), t("menu", lang)]
+        return [_join(t("done", lang), _summary(db, person), t("menu_hint", lang))]
 
     if conv.step == "confirm_withdraw":
         answer = yes_no(msg)
@@ -102,19 +108,19 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
             return [t("not_understood_yes_no", lang)]
         conv.step = "menu"
         if not answer:
-            return [t("cancelled", lang), t("menu", lang)]
+            return [_join(t("cancelled", lang), t("menu_hint", lang))]
         withdrawn = consent.withdraw_all(db, person, channel)
         if not withdrawn:
-            return [t("withdraw_none", lang), t("menu", lang)]
-        # Week 2: notify every approved data user here (withdrawal that travels).
-        return [t("withdrawn", lang, n=len(withdrawn)), _summary(db, person), t("menu", lang)]
+            return [_join(t("withdraw_none", lang), t("menu_hint", lang))]
+        # Week 3: notify every approved data user here (withdrawal that travels).
+        return [_join(t("withdrawn", lang, n=len(withdrawn)), _summary(db, person), t("menu_hint", lang))]
 
     # step == "menu"
     if low in WITHDRAW_WORDS or msg == "3":
         conv.step = "confirm_withdraw"
         return [t("confirm_withdraw", lang)]
     if msg == "1" or low in {"my data", "my choices"}:
-        return [_summary(db, person), t("menu", lang)]
+        return [_join(_summary(db, person), t("menu_hint", lang))]
     if msg == "2" or low in {"change"}:
         return _start_asking(db, person, conv)
     if msg == "5" or low in {"link", "link app"}:
@@ -123,4 +129,8 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
     if msg == "4" or low in {"language", "lang"}:
         conv.step = "language"
         return [t("welcome", "en")]
-    return [t("menu", lang)]
+    if low.strip(".!") in RESET_WORDS:
+        return [t("menu", lang)]
+    if low.strip(".!") in ACK_WORDS:
+        return [t("ack", lang)]
+    return [t("not_understood", lang)]
