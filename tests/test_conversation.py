@@ -9,7 +9,7 @@ def chat(db, text, who="555"):
 def test_full_first_time_flow_in_pidgin(db):
     assert "Reply 1 for English" in chat(db, "hi")[0]
     replies = chat(db, "2")
-    assert "Àṣẹ dey help you" in replies[0]
+    assert "Àṣẹ dey make you be the person" in replies[0]
     assert "1 of 4" in replies[1]
     assert "You gree?" in replies[1]
     chat(db, "yes")

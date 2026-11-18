@@ -11,7 +11,7 @@ T = {
                "We will ask you about {n} possible uses, one at a time. You can say YES or NO to each one, "
                "and you can change your mind any time.\n\n"
                "Àṣẹ never stores your health information, only your choices."),
-        "pcm": ("Àṣẹ dey help you decide how dem go use your health information.\n\n"
+        "pcm": ("Àṣẹ dey make you be the person wey go talk how dem go use your health information.\n\n"
                 "We go ask you about {n} ways wey dem fit use am, one by one. You fit talk YES or NO for each one, "
                 "and you fit change your mind any time.\n\n"
                 "Àṣẹ no dey keep your health information, na only your choice we dey keep."),
@@ -38,7 +38,7 @@ T = {
     },
     "code_hint": {
         "en": "Show the code {ref} to your health worker so your choices are respected.",
-        "pcm": "Show this code {ref} to your health worker, so dem go respect your choice.",
+        "pcm": "Show this code {ref} give your health worker, so dem go respect your choice.",
     },
     "menu": {
         "en": "What would you like to do?\n1 See my choices\n2 Change my choices\n3 Withdraw everything\n4 Change language\n5 Link another app (WhatsApp or Telegram)",
@@ -46,7 +46,7 @@ T = {
     },
     "link_code": {
         "en": "Your link code is {code}. It works for {mins} minutes.\n\nOn your other app (WhatsApp or Telegram), message Àṣẹ: LINK {code}\n\nBoth apps will then share the same choices. Never share this code with anyone.",
-        "pcm": "Your link code na {code}. E go work for {mins} minutes.\n\nFor your other app (WhatsApp or Telegram), send this to Àṣẹ: LINK {code}\n\nThe two apps go then carry the same choice. No show this code to anybody.",
+        "pcm": "Your link code na {code}. E go work for {mins} minutes.\n\nFor your other app (WhatsApp or Telegram), send this to Àṣẹ: LINK {code}\n\nThe two apps go kon carry the same choice. No show this code to anybody.",
     },
     "linked": {
         "en": "Linked. This app now shares your choices (code {ref}).",
@@ -74,7 +74,7 @@ T = {
     },
     "withdraw_none": {
         "en": "You have not given any YES, so there is nothing to withdraw.",
-        "pcm": "You never give any YES, so nothing dey to withdraw.",
+        "pcm": "You never talk YES, so nothing dey to withdraw.",
     },
     "cancelled": {
         "en": "Okay, nothing has changed.",
