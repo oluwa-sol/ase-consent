@@ -128,7 +128,17 @@ button{font:inherit;font-weight:600;padding:9px 14px;border:0;border-radius:8px;
 a.btn{display:inline-block;font-weight:600;padding:9px 14px;border-radius:8px;background:var(--indigo-2);color:#fff;text-decoration:none}
 button.ghost{background:transparent;color:var(--no);border:1px solid var(--line);padding:4px 10px;font-weight:500}
 table{width:100%;border-collapse:collapse;font-size:.92rem} td,th{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
-.scroll{overflow-x:auto}.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;align-items:end}
+.scroll{overflow-x:auto}
+main .wrap>*{min-width:0}
+.lead,.orgs,td{overflow-wrap:anywhere}
+.status{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 14px;justify-self:start}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--yes);display:inline-block}.status.off i{background:var(--no)}
+.orglist{display:grid;gap:14px}.org+.org{border-top:1px solid var(--line);padding-top:14px}
+.org .who{margin:0 0 8px}.chips{display:grid;gap:8px}
+.chip{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0;background:var(--bg);border-radius:10px;padding:8px 8px 8px 12px}
+.chip span{min-width:0}
+@media (max-width:560px){header .wrap{padding-block:20px 18px}.brand{font-size:2rem}.card{padding:14px}
+.decide{display:grid!important;grid-template-columns:1fr 1fr}.decide button{width:100%}}.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;align-items:end}
 .key{font-family:ui-monospace,Consolas,monospace;word-break:break-all;background:var(--bg);padding:10px;border-radius:8px;border:1px dashed var(--ochre)}
 """
 
@@ -274,7 +284,7 @@ def panel(ase_panel: str | None = Cookie(default=None), msg: str = ""):
 <p><b>What they will give back to the community:</b><br>{escape(r.benefit)}</p>
 <form method="post" action="/panel/requests/{r.id}/decide"><div class="row">
 <div><label for="note{r.id}">Note to the organisation (required if declining)</label><input id="note{r.id}" name="note" maxlength="1000"></div>
-<div style="display:flex;gap:8px"><button name="decision" value="approve">Approve</button>
+<div class="decide" style="display:flex;gap:8px"><button name="decision" value="approve">Approve</button>
 <button name="decision" value="decline" class="ghost">Decline</button></div></div></form></div>""")
     requests_html = "".join(req_cards) or '<p class="lead">No requests waiting.</p>'
 
@@ -282,24 +292,24 @@ def panel(ase_panel: str | None = Cookie(default=None), msg: str = ""):
     for o in orgs:
         approved = access.get(o.id, [])
         chips = "".join(
-            f'<form method="post" action="/panel/revoke" style="display:inline-flex;gap:6px;align-items:center;margin:0 8px 6px 0">'
+            f'<form method="post" action="/panel/revoke" class="chip">'
             f'<input type="hidden" name="data_user_id" value="{o.id}"><input type="hidden" name="use" value="{escape(c)}">'
             f'<span>{escape(titles.get(c, c))}</span><button class="ghost" title="Remove approval">remove</button></form>' for c in approved
         ) or '<span class="lead">Nothing approved</span>'
-        rows.append(f"<tr><td><b>{escape(o.name)}</b><br><span class='lead'>{escape(o.contact)}</span></td><td>{chips}</td></tr>")
+        rows.append(f"<div class='org'><p class='who'><b>{escape(o.name)}</b><br><span class='lead'>{escape(o.contact)}</span></p><div class='chips'>{chips}</div></div>")
 
     notice_rows = "".join(
         f"<tr><td>{escape(org_names.get(n.data_user_id, '?'))}</td><td>{escape(titles.get(n.data_use_code, n.data_use_code))}</td><td>{days(n.created_at)} day(s)</td></tr>"
         for n in open_notices) or '<tr><td colspan="3" class="lead">No open notices. Every withdrawal has been confirmed.</td></tr>'
 
     flash = f'<p class="badge bad">{escape(msg)}</p>' if msg else ""
-    email_state = ('<p class="lead">Email notices: <strong>on</strong> (decisions are emailed to organisations)</p>'
-                   if notify.enabled() else '<p class="lead">Email notices: <strong>off</strong> (SMTP settings not found)</p>')
+    email_state = ('<p class="status"><i></i>Email notices on</p>' if notify.enabled()
+                   else '<p class="status off"><i></i>Email notices off (SMTP settings not found)</p>')
     body = f"""{flash}{email_state}
 <section class="card"><h2>Access requests ({len(waiting)})</h2>
 <p class="lead">Organisations ask here. Approving creates their access for exactly the uses listed; they collect their key once from their private link.</p>
 <div class="uses" style="margin-top:12px">{requests_html}</div></section>
-<section class="card"><h2>Organisations</h2><div class="scroll"><table><tr><th>Organisation</th><th>Approved for</th></tr>{''.join(rows) or '<tr><td colspan="2" class="lead">None yet</td></tr>'}</table></div></section>
+<section class="card"><h2>Organisations</h2><div class="orglist">{''.join(rows) or '<p class="lead">None yet</p>'}</div></section>
 <section class="card"><h2>Open withdrawal notices</h2><div class="scroll"><table><tr><th>Organisation</th><th>Use</th><th>Open for</th></tr>{notice_rows}</table></div></section>
 <form method="post" action="/panel/logout"><button class="ghost">Sign out</button></form>"""
     return _page("Panel", body, switch='<a class="pill" href="/transparency">Public page</a>')
