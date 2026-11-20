@@ -13,7 +13,7 @@ from fastapi import APIRouter, Cookie, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
-from . import consent, datausers, requests_flow, stats
+from . import consent, datausers, notify, requests_flow, stats
 from .db import SessionLocal
 from .models import AccessRequest, DataUser, DataUserAccess, WithdrawalNotice
 
@@ -293,7 +293,9 @@ def panel(ase_panel: str | None = Cookie(default=None), msg: str = ""):
         for n in open_notices) or '<tr><td colspan="3" class="lead">No open notices. Every withdrawal has been confirmed.</td></tr>'
 
     flash = f'<p class="badge bad">{escape(msg)}</p>' if msg else ""
-    body = f"""{flash}
+    email_state = ('<p class="lead">Email notices: <strong>on</strong> (decisions are emailed to organisations)</p>'
+                   if notify.enabled() else '<p class="lead">Email notices: <strong>off</strong> (SMTP settings not found)</p>')
+    body = f"""{flash}{email_state}
 <section class="card"><h2>Access requests ({len(waiting)})</h2>
 <p class="lead">Organisations ask here. Approving creates their access for exactly the uses listed; they collect their key once from their private link.</p>
 <div class="uses" style="margin-top:12px">{requests_html}</div></section>
