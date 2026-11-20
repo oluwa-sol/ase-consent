@@ -4,20 +4,40 @@ The email never contains the API key, only a note that a decision is ready on th
 private status link (which they saved when they applied).
 
 Settings: SMTP_HOST, SMTP_PORT (default 587), SMTP_USER, SMTP_PASSWORD, SMTP_FROM.
+Or BREVO_API_KEY + SMTP_FROM to send over HTTPS instead (for hosts that block SMTP ports).
 """
 
+import json
 import os
 import smtplib
+import urllib.request
 from email.message import EmailMessage
 
 
 def enabled() -> bool:
-    return bool(os.environ.get("SMTP_HOST") and os.environ.get("SMTP_FROM"))
+    return bool((os.environ.get("SMTP_HOST") or os.environ.get("BREVO_API_KEY")) and os.environ.get("SMTP_FROM"))
+
+
+def _send_brevo_api(to: str, subject: str, body: str) -> bool:
+    payload = {"sender": {"email": os.environ["SMTP_FROM"], "name": "Àṣẹ"}, "to": [{"email": to}],
+               "subject": subject, "textContent": body}
+    req = urllib.request.Request("https://api.brevo.com/v3/smtp/email", data=json.dumps(payload).encode(),
+                                 headers={"api-key": os.environ["BREVO_API_KEY"], "Content-Type": "application/json",
+                                          "Accept": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return 200 <= r.status < 300
+    except Exception as e:
+        detail = e.read().decode(errors="replace")[:200] if hasattr(e, "read") else ""
+        print(f"[notify] email to {to} failed (Brevo API): {e} {detail}")
+        return False
 
 
 def send(to: str, subject: str, body: str) -> bool:
     if not enabled():
         return False
+    if os.environ.get("BREVO_API_KEY"):
+        return _send_brevo_api(to, subject, body)
     msg = EmailMessage()
     msg["From"], msg["To"], msg["Subject"] = os.environ["SMTP_FROM"], to, subject
     msg.set_content(body)
