@@ -1,59 +1,48 @@
 # Àṣẹ
 
-**Community-controlled consent for health data, on the messaging apps people already use: WhatsApp and Telegram.**
+**Open-source consent for health data, run through the chat apps people already use.**
 
-*Àṣẹ* (Yoruba) means "authority", "so it is". It is the word that makes something binding. This project is about who gets to say it over people's data.
+People decide, use by use, how their health data may be used, and can change their mind at any time. Every decision goes into a tamper-evident log, and organisations must check Àṣẹ before they use anyone's data.
 
-## Why
+*Àṣẹ* (Yoruba) means "so it is", the word that makes something binding.
 
-Health data from African communities, including mental health data, is increasingly used to build AI. Too often that happens without meaningful consent, without the community having any say, and without any of the benefit coming back. Consent, when it exists at all, is usually a one-time tap-through that people can't understand or change.
+**Live:** [ase-consent.onrender.com/transparency](https://ase-consent.onrender.com/transparency) · **Telegram:** working today · **WhatsApp:** connector built and tested, live number coming soon
 
-Àṣẹ is an open-source tool that lets people and communities decide how their data is used, in a channel they already use every day.
+> Free hosting: the first visit after a quiet spell can take up to a minute to load.
 
-## Built for the channel people already have
+## The problem
 
-Communities don't all use the same app. WhatsApp dominates in Nigeria and much of Africa, Telegram is the main messenger in other regions and in communities where WhatsApp is restricted or unreliable, and some people have no smartphone at all. So Àṣẹ is **channel-agnostic by design**: the consent logic lives in one core, and each messaging app is a thin connector on top.
+Health data from African communities, including mental health data, is increasingly used to build AI, often without meaningful consent and without any benefit coming back. When consent exists, it is usually a one-time tap-through that people can't understand or change.
 
-- **WhatsApp** and **Telegram** are both first-class channels from day one, with the same features on each.
-- A person's consent is the same record whichever channel they use, so they can switch apps without losing control.
-- **SMS** is planned next, for people on basic phones.
-- New channels can be added without touching the consent rules.
+## What works today
 
-## What it does (planned)
+- **Consent per use, in chat.** Separate yes or no for community research, sharing with partners, AI training and more, in **English and Nigerian Pidgin**. People can view, change or withdraw everything with a simple message.
+- **Tamper-evident record.** Every decision is written to a hash-chained, append-only ledger. Anyone can check that nothing was edited or deleted at [`/v1/ledger/verify`](https://ase-consent.onrender.com/v1/ledger/verify).
+- **Organisations must ask, and the community decides.** Organisations apply at [`/request-access`](https://ase-consent.onrender.com/request-access), saying why they need the data and what they will give back. A panel approves or declines, and an approval can be removed at any time.
+- **Consent check API.** `GET /v1/consent/check?reference=ASE-XXXXXX&use=ai_training` answers only "allowed" or "not allowed". Allowed needs both an approved organisation and the person's yes, and every "allowed" is logged.
+- **Withdrawal that travels.** When someone withdraws, every organisation that used their data for that purpose gets a notice and must confirm it has stopped. The person is told how many were notified.
+- **Public transparency page.** Shows what people agreed to, which organisations are approved and whether withdrawal notices are confirmed, without ever showing anyone's personal details.
+- **No health data inside Àṣẹ.** It stores consent and decisions only. The health data stays in the organisation's own system.
 
-- **Plain-language consent in the chat**, on WhatsApp or Telegram, in English, Nigerian Pidgin and Yoruba, with voice notes for people who prefer listening to reading.
-- **Consent per use, not one big "I agree".** Separate choices for community research, sharing with partners, AI training, and more.
-- **Change or withdraw any time** with a simple message. Withdrawal is passed on to every approved data user, who must confirm.
-- **A community panel** (young people, people with lived experience, community health workers) that approves or rejects each request to use the data.
-- **A public benefit log** recording what every data user gives back to the community.
-- **Tamper-evident consent records**, structured to follow ISO/IEC TS 27560.
-- **No health data inside Àṣẹ.** It stores consent and decisions only. Health data stays in the organisation's own system, which checks Àṣẹ before any use.
+## How it's built
+
+- **Channel-agnostic core.** The consent rules live in one place, and each messaging app is a thin connector. A person's record is the same whichever app they use, and they can link apps with a one-time code.
+- **Python, FastAPI, PostgreSQL**, deployed on Render.
+- **Telegram Bot API** (webhook) and **WhatsApp Cloud API** (every webhook checked against Meta's signature).
+- Organisation API keys are stored hashed and shown once.
+- **53 automated tests.**
+
+## Roadmap
+
+- WhatsApp live on a dedicated number
+- Yoruba, and voice notes for people who prefer listening
+- SMS for basic phones
+- Public benefit log of what each organisation gives back
+- Consent records structured to follow ISO/IEC TS 27560
 
 ## Principles
 
-Àṣẹ is designed around the CARE principles for data governance (Collective benefit, Authority to control, Responsibility, Ethics), dynamic consent, and the consent standard in Nigeria's Data Protection Act 2023: freely given, specific, informed and clear.
-
-## Live demo
-
-Running at **https://ase-consent.onrender.com** (free hosting: the first request after a quiet spell can take up to a minute to wake the server). Anyone can check the consent record is untampered at [`/v1/ledger/verify`](https://ase-consent.onrender.com/v1/ledger/verify).
-
-## Status
-
-Early development. Working today:
-
-- Channel-agnostic consent core with a **hash-chained, append-only consent ledger** (any edit or deletion is detected)
-- Chat flow in **English and Nigerian Pidgin**: consent per use, view choices, change them, withdraw everything (with confirmation)
-- **Telegram** connector (webhook and local polling) and **WhatsApp** connector (Cloud API, every webhook checked against Meta's signature)
-- **One record across apps**: a person links WhatsApp and Telegram with a one-time code shown only inside an app they already use. Two existing records are never merged
-- **Organisations as data users**: each has its own API key (stored hashed) and is approved for specific uses only
-- **Consent check API**: `GET /v1/consent/check?reference=ASE-XXXXXX&use=ai_training` answers only "allowed or not". Allowed needs both an approved organisation and the person's YES, and every "allowed" is logged
-- **Withdrawal that travels**: when someone withdraws or changes a YES to NO, every organisation that used their data for that purpose gets a notice (`GET /v1/notices`) and must confirm it has stopped (`POST /v1/notices/{id}/ack`). The person is told how many organisations were notified
-- Public **ledger verification**: `GET /v1/ledger/verify`
-- **Public transparency page** ([`/transparency`](https://ase-consent.onrender.com/transparency), also in [Pidgin](https://ase-consent.onrender.com/transparency?lang=pcm)): what people agreed to per use, which organisations are approved, how many withdrawal notices are confirmed or still open, and the record check. Never shows anyone's personal information, and loads no fonts, scripts or trackers from anywhere else
-- **Organisations must ask, the community decides**: organisations apply at [`/request-access`](https://ase-consent.onrender.com/request-access), saying why they need the data and what they will give back. The panel (`/panel`, admin key) approves or declines with a note. The organisation follows its request on a private link; if approved, its API key is created and shown there exactly once and is never stored readable. Optional email notices (SMTP) say a decision is ready, never containing the key
-- **Panel**: review access requests, remove an approval at any time (takes effect immediately), and see open withdrawal notices
-
-Background research is in [`research/`](research/).
+Designed around the CARE principles for data governance (Collective benefit, Authority to control, Responsibility, Ethics), dynamic consent, and the consent standard in Nigeria's Data Protection Act 2023: freely given, specific, informed and clear.
 
 ## Run it locally
 
@@ -72,11 +61,9 @@ set ASE_ORG_API_KEY=choose-a-key
 uvicorn ase.api:app --reload
 ```
 
-WhatsApp needs a public HTTPS URL (deploy, or a tunnel such as cloudflared) and these settings from your own Meta app: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`. Point the webhook at `/whatsapp/webhook` and subscribe to the `messages` field on the WhatsApp Business Account object.
+WhatsApp needs a public HTTPS URL and these settings from your own Meta app: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`. Point the webhook at `/whatsapp/webhook` and subscribe to `messages` on the WhatsApp Business Account object.
 
-## Stack
-
-Python (FastAPI), PostgreSQL, a channel-agnostic consent core with connectors for the WhatsApp Cloud API and the Telegram Bot API (SMS planned), a lightweight web dashboard, Docker.
+Background research is in [`research/`](research/).
 
 ## Licence
 
