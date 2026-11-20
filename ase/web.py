@@ -442,3 +442,24 @@ def request_status(token: str):
         body = f"""<section class="card"><h2>{escape(req.org_name)}</h2>
 <p class="lead">Asked for: {wanted}</p>{state}</section>"""
     return _page("Request status", body, switch=switch)
+
+@router.get("/privacy", response_class=HTMLResponse)
+def privacy():
+    contact = os.environ.get("ASE_CONTACT_EMAIL") or os.environ.get("SMTP_FROM") or ""
+    reach = (f'email <a href="mailto:{escape(contact)}">{escape(contact)}</a>' if contact
+             else 'open an issue at <a href="https://github.com/oluwa-sol/ase-consent/issues">github.com/oluwa-sol/ase-consent</a>')
+    body = f"""<section class="card"><h2>Privacy policy</h2>
+<p class="lead">Last updated 20 November 2026. Àṣẹ is an open-source consent tool. This page explains what it keeps and why.</p></section>
+<section class="card"><h2>What Àṣẹ keeps</h2>
+<p>Your chat ID on the app you use (your WhatsApp number or Telegram user ID), a reference code such as ASE-XXXXXX, your language choice, and each consent decision you make with the date and time. If you link apps, the link between your IDs.</p>
+<p><b>Àṣẹ never stores health data.</b> Health data stays with the organisation that holds it.</p></section>
+<section class="card"><h2>Why</h2>
+<p>Only to record what you agreed to, let you change or withdraw it, tell approved organisations whether a use is allowed, and notify them when you withdraw.</p></section>
+<section class="card"><h2>Who can see it</h2>
+<p>Organisations never see your number or name. They can only ask "is this use allowed for reference ASE-XXXXXX?" and get a yes or no. The public transparency page shows totals only. Messages pass through WhatsApp (Meta) or Telegram under their own privacy policies.</p></section>
+<section class="card"><h2>How long, and your choices</h2>
+<p>Consent decisions are kept in a tamper-evident record so they can be checked later, including your withdrawals. You can withdraw everything at any time by sending WITHDRAW in the chat. To have your chat ID removed from Àṣẹ, {reach} and a person will handle it.</p></section>
+<section class="card"><h2>Open source</h2>
+<p>The code is public at <a href="https://github.com/oluwa-sol/ase-consent">github.com/oluwa-sol/ase-consent</a>.</p></section>"""
+    return _page("Privacy", body)
+

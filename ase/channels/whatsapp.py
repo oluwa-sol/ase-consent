@@ -70,6 +70,10 @@ def process_payload(payload: dict) -> list[tuple[str, list[str]]]:
             replies = handle_message(db, CHANNEL, sender, text)
             db.commit()
         for reply in replies:
-            send_text(sender, reply)
+            try:
+                send_text(sender, reply)
+            except Exception as e:  # never fail the webhook: Meta would retry and repeat the message
+                detail = getattr(getattr(e, "response", None), "text", "")[:300]
+                print(f"[whatsapp] reply to {sender[-4:]} failed: {e} {detail}")
         results.append((sender, replies))
     return results
