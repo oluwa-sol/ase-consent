@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import consent
-from .messages import LANGUAGES, is_keep, t, yes_no
+from .messages import LANGUAGES, is_back, is_keep, t, yes_no
 from .models import Conversation, Person
 
 RESET_WORDS = {"start", "/start", "hi", "hello", "menu", "help"}
@@ -34,9 +34,13 @@ def _ask(db: Session, person: Person, conv: Conversation) -> str:
     current = consent.latest_decisions(db, person).get(use.code)
     if current is not None:  # changing an earlier answer: show it, and allow KEEP
         label = t("status", person.language)[current.decision]
-        return t("ask_change", person.language, i=conv.use_index + 1, n=len(uses), title=txt["title"],
+        text = t("ask_change", person.language, i=conv.use_index + 1, n=len(uses), title=txt["title"],
                  explain=txt["explain"], current=label)
-    return t("ask", person.language, i=conv.use_index + 1, n=len(uses), title=txt["title"], explain=txt["explain"])
+    else:
+        text = t("ask", person.language, i=conv.use_index + 1, n=len(uses), title=txt["title"], explain=txt["explain"])
+    if conv.use_index > 0:
+        text += "\n" + t("back_hint", person.language)
+    return text
 
 
 def _summary(db: Session, person: Person) -> str:
@@ -100,6 +104,10 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
     if conv.step in ("asking", "confirm_withdraw") and low.strip(".!") in RESET_WORDS:
         conv.step = "menu"
         return [t("menu", lang)]
+
+    if conv.step == "asking" and is_back(msg):
+        conv.use_index = max(0, conv.use_index - 1)  # earlier answers stay saved; this just re-asks
+        return [_ask(db, person, conv)]
 
     if conv.step == "asking":
         uses = consent.active_uses(db)

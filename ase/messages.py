@@ -24,6 +24,10 @@ T = {
         "en": "{i} of {n}: {title}\n\n{explain}\n\nYour current choice: {current}.\nReply YES or NO, or KEEP to leave it as it is.",
         "pcm": "{i} of {n}: {title}\n\n{explain}\n\nWetin you choose before: {current}.\nReply YES or NO, or KEEP make e stay like that.",
     },
+    "back_hint": {
+        "en": "(Send BACK to change the previous answer.)",
+        "pcm": "(Send BACK make you change the answer wey you give before.)",
+    },
     "not_understood_yes_no": {
         "en": "Sorry, please reply YES or NO.",
         "pcm": "Abeg, reply YES or NO.",
@@ -106,14 +110,21 @@ T = {
     },
 }
 
-YES = {"yes", "y", "yeah", "yep", "ok", "okay", "i agree", "agree", "sure", "na so", "i gree", "gree", "ehen", "bẹẹni", "beeni"}
-NO = {"no", "n", "nope", "no thanks", "i no gree", "no be so", "rara", "bẹẹkọ", "beeko"}
+YES = {"yes", "y", "yea", "yeah", "yeh", "ya", "yah", "yes o", "yess", "yup", "yep", "of course", "i do", "ok", "okay", "i agree", "agree", "sure", "na so", "i gree", "gree", "ehen", "bẹẹni", "beeni"}
+NO = {"no", "n", "nah", "naa", "no o", "nope", "not really", "i don't", "i dont", "no thanks", "i no gree", "no be so", "rara", "bẹẹkọ", "beeko"}
 
 
 def t(key: str, lang: str, **kw) -> str:
     entry = T[key]
     text = entry.get(lang) or entry["en"]
     return text.format(**kw) if kw and isinstance(text, str) else text
+
+
+BACK = {"back", "go back", "previous", "undo", "prev"}
+
+
+def is_back(text: str) -> bool:
+    return text.strip().lower().strip(".!") in BACK
 
 
 KEEP = {"keep", "skip", "same", "leave it", "no change"}

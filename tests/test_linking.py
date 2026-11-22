@@ -127,3 +127,17 @@ def test_change_shows_current_choice_and_keep_leaves_it(db):
     latest = consent.latest_decisions(db, person)
     assert latest["community_research"].decision == "granted"
     assert latest["partner_sharing"].decision == "refused"
+
+
+def test_back_returns_to_previous_question_and_yea_counts(db):
+    wa(db, "hi")
+    wa(db, "1")
+    wa(db, "yea")        # 1: YES
+    wa(db, "no")         # 2: NO
+    out = wa(db, "back")  # back to 2
+    assert "2 of 4" in out[0] and "Your current choice: NO" in out[0]
+    wa(db, "yeah")       # 2: now YES
+    person = consent.get_or_create_person(db, "whatsapp", "wa-1")
+    latest = consent.latest_decisions(db, person)
+    assert latest["community_research"].decision == "granted"
+    assert latest["partner_sharing"].decision == "granted"
