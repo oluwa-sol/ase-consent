@@ -20,6 +20,10 @@ T = {
         "en": "{i} of {n}: {title}\n\n{explain}\n\nDo you agree? Reply YES or NO.",
         "pcm": "{i} of {n}: {title}\n\n{explain}\n\nYou gree? Reply YES or NO.",
     },
+    "ask_change": {
+        "en": "{i} of {n}: {title}\n\n{explain}\n\nYour current choice: {current}.\nReply YES or NO, or KEEP to leave it as it is.",
+        "pcm": "{i} of {n}: {title}\n\n{explain}\n\nWetin you choose before: {current}.\nReply YES or NO, or KEEP make e stay like that.",
+    },
     "not_understood_yes_no": {
         "en": "Sorry, please reply YES or NO.",
         "pcm": "Abeg, reply YES or NO.",
@@ -110,6 +114,13 @@ def t(key: str, lang: str, **kw) -> str:
     entry = T[key]
     text = entry.get(lang) or entry["en"]
     return text.format(**kw) if kw and isinstance(text, str) else text
+
+
+KEEP = {"keep", "skip", "same", "leave it", "no change"}
+
+
+def is_keep(text: str) -> bool:
+    return text.strip().lower().strip(".!") in KEEP
 
 
 def yes_no(text: str) -> bool | None:

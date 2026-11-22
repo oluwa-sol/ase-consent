@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import consent
-from .messages import LANGUAGES, t, yes_no
+from .messages import LANGUAGES, is_keep, t, yes_no
 from .models import Conversation, Person
 
 RESET_WORDS = {"start", "/start", "hi", "hello", "menu", "help"}
@@ -31,6 +31,11 @@ def _ask(db: Session, person: Person, conv: Conversation) -> str:
     uses = consent.active_uses(db)
     use = uses[conv.use_index]
     txt = use.text.get(person.language) or use.text["en"]
+    current = consent.latest_decisions(db, person).get(use.code)
+    if current is not None:  # changing an earlier answer: show it, and allow KEEP
+        label = t("status", person.language)[current.decision]
+        return t("ask_change", person.language, i=conv.use_index + 1, n=len(uses), title=txt["title"],
+                 explain=txt["explain"], current=label)
     return t("ask", person.language, i=conv.use_index + 1, n=len(uses), title=txt["title"], explain=txt["explain"])
 
 
@@ -97,12 +102,16 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
         return [t("menu", lang)]
 
     if conv.step == "asking":
-        answer = yes_no(msg)
-        if answer is None:
-            return [t("not_understood_yes_no", lang)]
         uses = consent.active_uses(db)
-        event = consent.record(db, person, uses[conv.use_index], "granted" if answer else "refused", channel)
-        told = [t("notified", lang, k=event.notified)] if event.notified else []
+        current = consent.latest_decisions(db, person).get(uses[conv.use_index].code)
+        if current is not None and is_keep(msg):
+            told = []  # keep the earlier answer, record nothing new
+        else:
+            answer = yes_no(msg)
+            if answer is None:
+                return [t("not_understood_yes_no", lang)]
+            event = consent.record(db, person, uses[conv.use_index], "granted" if answer else "refused", channel)
+            told = [t("notified", lang, k=event.notified)] if event.notified else []
         conv.use_index += 1
         if conv.use_index < len(uses):
             return [_join(*told, _ask(db, person, conv))]

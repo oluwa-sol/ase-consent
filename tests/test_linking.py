@@ -116,3 +116,14 @@ def test_changing_yes_to_no_tells_the_person_who_was_notified(db):
     tg(db, "2")          # change my choices
     out = tg(db, "no")   # community research: YES -> NO
     assert "told 1 organisation" in out[0]
+
+
+def test_change_shows_current_choice_and_keep_leaves_it(db):
+    person = _telegram_user_with_choices(db)  # all YES
+    out = tg(db, "2")
+    assert "Your current choice: YES" in out[0]
+    tg(db, "keep")                     # 1: keep YES
+    out = tg(db, "no")                 # 2: change to NO
+    latest = consent.latest_decisions(db, person)
+    assert latest["community_research"].decision == "granted"
+    assert latest["partner_sharing"].decision == "refused"
