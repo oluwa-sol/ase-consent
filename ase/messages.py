@@ -77,8 +77,8 @@ T = {
         "pcm": "This app don already join your choice dem.",
     },
     "link_has_choices": {
-        "en": "This app already has its own saved choices, so it can't be linked. To link it, first choose 3 to withdraw here, then try again.",
-        "pcm": "This app don already get im own choice dem, so e no fit join. To join am, first choose 3 make you withdraw for here, then try again.",
+        "en": "This app still has a YES saved, so it can't be linked. To link it, first choose 3 to withdraw here, then try again.",
+        "pcm": "This app still get YES wey you give for here, so e no fit join. To join am, first choose 3 make you withdraw for here, then try again.",
     },
     "confirm_withdraw": {
         "en": "This will withdraw every YES you have given. Nobody will be allowed to use your information from now on. Are you sure? Reply YES or NO.",

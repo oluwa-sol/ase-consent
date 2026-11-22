@@ -64,10 +64,32 @@ def test_wrong_code_rejected(db):
     assert "wrong or has expired" in wa(db, "LINK 000000")[0]
 
 
-def test_never_merges_two_existing_records(db):
+def test_never_merges_a_record_with_an_active_yes(db):
     _telegram_user_with_choices(db)
     wa(db, "hi")
     wa(db, "1")
-    wa(db, "no")  # WhatsApp user now has a choice of their own
+    wa(db, "yes")  # WhatsApp user now has a YES of their own
     code = _code_from(tg(db, "5")[0])
-    assert "already has its own saved choices" in wa(db, f"LINK {code}")[0]
+    assert "still has a YES saved" in wa(db, f"LINK {code}")[0]
+
+
+def test_link_allowed_after_withdrawing_here(db):
+    person = _telegram_user_with_choices(db)
+    wa(db, "hi")
+    wa(db, "1")
+    for answer in ("yes", "no", "no", "no"):
+        wa(db, answer)
+    wa(db, "3")
+    wa(db, "yes")  # withdraw everything on WhatsApp
+    out = wa(db, f"LINK {_code_from(tg(db, '5')[0])}")
+    assert person.reference in out[0]
+    assert consent.get_or_create_person(db, "whatsapp", "wa-1").id == person.id
+
+
+def test_link_allowed_when_only_no_answers(db):
+    person = _telegram_user_with_choices(db)
+    wa(db, "hi")
+    wa(db, "1")
+    wa(db, "no")
+    out = wa(db, f"LINK {_code_from(tg(db, '5')[0])}")
+    assert person.reference in out[0]

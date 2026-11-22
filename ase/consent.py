@@ -105,14 +105,18 @@ def redeem_link_code(db: Session, code: str, channel: str, external_id: str) -> 
     if ident and ident.person_id == target.id:
         return "same", target
     if ident:
-        if latest_decisions(db, db.get(Person, ident.person_id)):
+        old_person = db.get(Person, ident.person_id)
+        decisions = latest_decisions(db, old_person)
+        # Only an active YES blocks linking: two live permissions are never merged.
+        if any(e.decision == "granted" for e in decisions.values()):
             return "has_choices", None
         old_person_id = ident.person_id
         ident.person_id = target.id
         for conv in db.scalars(select(Conversation).where(Conversation.person_id == old_person_id)):
             db.delete(conv)
         db.flush()
-        db.delete(db.get(Person, old_person_id))
+        if not decisions:  # keep any record that has history, so the audit trail stays intact
+            db.delete(old_person)
     else:
         db.add(ChannelIdentity(person_id=target.id, channel=channel, external_id=str(external_id)))
     link.used = True
