@@ -6,7 +6,7 @@ People decide, use by use, how their health data may be used, and can change the
 
 *Àṣẹ* (Yoruba) means "so it is", the word that makes something binding.
 
-**Live:** [ase-consent.onrender.com/transparency](https://ase-consent.onrender.com/transparency) · **Telegram:** working today · **WhatsApp:** connector built and tested, live number coming soon
+**Live:** [ase-consent.onrender.com/transparency](https://ase-consent.onrender.com/transparency) · **Telegram:** working today · **WhatsApp:** working (Meta test number, public number coming soon)
 
 > Free hosting: the first visit after a quiet spell can take up to a minute to load.
 
