@@ -103,3 +103,16 @@ def test_menu_escapes_the_questions(db):
     assert "What would you like to do?" in out[0]
     person = consent.get_or_create_person(db, "whatsapp", "wa-1")
     assert len(consent.latest_decisions(db, person)) == 1  # the answer given is kept
+
+
+def test_changing_yes_to_no_tells_the_person_who_was_notified(db):
+    from ase import datausers
+    from ase.models import DataUser, DataUserAccess
+    person = _telegram_user_with_choices(db)  # all YES
+    du = DataUser(name="Org", contact="o@example.org", api_key_hash="x")
+    db.add(du); db.flush()
+    db.add(DataUserAccess(data_user_id=du.id, data_use_code="community_research")); db.flush()
+    assert datausers.check(db, du, person, "community_research")["allowed"]
+    tg(db, "2")          # change my choices
+    out = tg(db, "no")   # community research: YES -> NO
+    assert "told 1 organisation" in out[0]

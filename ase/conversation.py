@@ -101,12 +101,13 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
         if answer is None:
             return [t("not_understood_yes_no", lang)]
         uses = consent.active_uses(db)
-        consent.record(db, person, uses[conv.use_index], "granted" if answer else "refused", channel)
+        event = consent.record(db, person, uses[conv.use_index], "granted" if answer else "refused", channel)
+        told = [t("notified", lang, k=event.notified)] if event.notified else []
         conv.use_index += 1
         if conv.use_index < len(uses):
-            return [_ask(db, person, conv)]
+            return [_join(*told, _ask(db, person, conv))]
         conv.step = "menu"
-        return [_join(t("done", lang), _summary(db, person), t("menu_hint", lang))]
+        return [_join(*told, t("done", lang), _summary(db, person), t("menu_hint", lang))]
 
     if conv.step == "confirm_withdraw":
         answer = yes_no(msg)
