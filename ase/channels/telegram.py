@@ -23,9 +23,20 @@ def _token() -> str:
     return token
 
 
+def build_payload(chat_id: int | str, text: str) -> dict:
+    """Text plus a tap keyboard when the reply offers buttons; otherwise clear any old keyboard."""
+    buttons = getattr(text, "buttons", None) or []
+    if buttons:
+        rows = [[{"text": b} for b in buttons[i:i + 2]] for i in range(0, len(buttons), 2)]
+        markup = {"keyboard": rows, "resize_keyboard": True, "one_time_keyboard": True}
+    else:
+        markup = {"remove_keyboard": True}
+    return {"chat_id": chat_id, "text": str(text), "reply_markup": markup}
+
+
 def send_message(chat_id: int | str, text: str) -> None:
     r = httpx.post(API.format(token=_token(), method="sendMessage"),
-                   json={"chat_id": chat_id, "text": text}, timeout=20)
+                   json=build_payload(chat_id, text), timeout=20)
     r.raise_for_status()
 
 

@@ -50,13 +50,29 @@ def extract_messages(payload: dict) -> list[tuple[str, str]]:
     return found
 
 
+def build_payload(to: str, text: str) -> dict:
+    """Plain text, or tap buttons when the reply offers them (up to 3 as buttons, more as a list)."""
+    buttons = getattr(text, "buttons", None) or []
+    base = {"messaging_product": "whatsapp", "to": to}
+    if not buttons or len(text) > 1024:
+        return {**base, "type": "text", "text": {"body": str(text)[:4096]}}
+    if len(buttons) <= 3:
+        action = {"buttons": [{"type": "reply", "reply": {"id": b, "title": b[:20]}} for b in buttons]}
+        return {**base, "type": "interactive",
+                "interactive": {"type": "button", "body": {"text": str(text)}, "action": action}}
+    rows = [{"id": b, "title": b[:24]} for b in buttons[:10]]
+    return {**base, "type": "interactive",
+            "interactive": {"type": "list", "body": {"text": str(text)},
+                            "action": {"button": "Choose", "sections": [{"title": "Options", "rows": rows}]}}}
+
+
 def send_text(to: str, text: str) -> None:
     token = os.environ["WHATSAPP_TOKEN"].strip()
     number_id = os.environ["WHATSAPP_PHONE_NUMBER_ID"].strip()
     r = httpx.post(
         f"{GRAPH}/{number_id}/messages",
         headers={"Authorization": f"Bearer {token}"},
-        json={"messaging_product": "whatsapp", "to": to, "type": "text", "text": {"body": text[:4096]}},
+        json=build_payload(to, text),
         timeout=20,
     )
     r.raise_for_status()

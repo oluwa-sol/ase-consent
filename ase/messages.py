@@ -1,6 +1,15 @@
 """Chat text in each language. "pcm" is Nigerian Pidgin (draft, needs community review)."""
 
-LANGUAGES = {"1": "en", "2": "pcm"}
+LANGUAGES = {"1": "en", "2": "pcm", "english": "en", "pidgin": "pcm"}
+
+
+class Reply(str):
+    """A chat message that may offer tap buttons. Channels without buttons just send the text."""
+
+    def __new__(cls, text: str, buttons: list[str] | None = None):
+        obj = super().__new__(cls, text)
+        obj.buttons = list(buttons or [])
+        return obj
 
 T = {
     "welcome": {

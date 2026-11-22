@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import consent
-from .messages import LANGUAGES, is_back, is_keep, t, yes_no
+from .messages import LANGUAGES, Reply, is_back, is_keep, t, yes_no
 from .models import Conversation, Person
 
 RESET_WORDS = {"start", "/start", "hi", "hello", "menu", "help"}
@@ -38,9 +38,12 @@ def _ask(db: Session, person: Person, conv: Conversation) -> str:
                  explain=txt["explain"], current=label)
     else:
         text = t("ask", person.language, i=conv.use_index + 1, n=len(uses), title=txt["title"], explain=txt["explain"])
+    buttons = ["YES", "NO"]
+    if current is not None:
+        buttons.append("KEEP")
     if conv.use_index > 0:
-        text += "\n" + t("back_hint", person.language)
-    return text
+        buttons.append("BACK")
+    return Reply(text, buttons)
 
 
 def _summary(db: Session, person: Person) -> str:
@@ -58,8 +61,10 @@ def _summary(db: Session, person: Person) -> str:
 
 
 def _join(*parts: str) -> str:
-    """Several pieces of text sent as ONE chat message, so the phone buzzes once."""
-    return "\n\n".join(parts)
+    """Several pieces of text sent as ONE chat message, so the phone buzzes once.
+    Tap buttons on the last part are kept."""
+    last = parts[-1] if parts else ""
+    return Reply("\n\n".join(parts), getattr(last, "buttons", None))
 
 
 def _start_asking(db: Session, person: Person, conv: Conversation) -> list[str]:
@@ -87,18 +92,18 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
 
     if conv.step == "new":
         conv.step = "language"
-        return [t("welcome", "en")]
+        return [Reply(t("welcome", "en"), ["English", "Pidgin"])]
 
     if conv.step == "language":
-        if msg in LANGUAGES:
-            person.language = LANGUAGES[msg]
+        if low in LANGUAGES:
+            person.language = LANGUAGES[low]
             n = len(consent.active_uses(db))
             first_time = not consent.latest_decisions(db, person)
             if first_time:
                 return [t("intro", person.language, n=n)] + _start_asking(db, person, conv)
             conv.step = "menu"
             return [t("menu", person.language)]
-        return [t("welcome", "en")]
+        return [Reply(t("welcome", "en"), ["English", "Pidgin"])]
 
     # MENU / HI / HELP always gets you out of a question flow; answers already given stay saved.
     if conv.step in ("asking", "confirm_withdraw") and low.strip(".!") in RESET_WORDS:
@@ -117,7 +122,7 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
         else:
             answer = yes_no(msg)
             if answer is None:
-                return [t("not_understood_yes_no", lang)]
+                return [Reply(t("not_understood_yes_no", lang), _ask(db, person, conv).buttons)]
             event = consent.record(db, person, uses[conv.use_index], "granted" if answer else "refused", channel)
             told = [t("notified", lang, k=event.notified)] if event.notified else []
         conv.use_index += 1
@@ -129,7 +134,7 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
     if conv.step == "confirm_withdraw":
         answer = yes_no(msg)
         if answer is None:
-            return [t("not_understood_yes_no", lang)]
+            return [Reply(t("not_understood_yes_no", lang), ["YES", "NO"])]
         conv.step = "menu"
         if not answer:
             return [_join(t("cancelled", lang), t("menu_hint", lang))]
@@ -144,7 +149,7 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
     # step == "menu"
     if low in WITHDRAW_WORDS or msg == "3":
         conv.step = "confirm_withdraw"
-        return [t("confirm_withdraw", lang)]
+        return [Reply(t("confirm_withdraw", lang), ["YES", "NO"])]
     if msg == "1" or low in {"my data", "my choices"}:
         return [_join(_summary(db, person), t("menu_hint", lang))]
     if msg == "2" or low in {"change"}:
@@ -154,7 +159,7 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
         return [t("link_code", lang, code=code, mins=consent.LINK_MINUTES)]
     if msg == "4" or low in {"language", "lang"}:
         conv.step = "language"
-        return [t("welcome", "en")]
+        return [Reply(t("welcome", "en"), ["English", "Pidgin"])]
     if low.strip(".!") in RESET_WORDS:
         return [t("menu", lang)]
     if low.strip(".!") in BYE_WORDS:
