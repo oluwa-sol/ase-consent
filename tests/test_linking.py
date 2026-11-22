@@ -93,3 +93,13 @@ def test_link_allowed_when_only_no_answers(db):
     wa(db, "no")
     out = wa(db, f"LINK {_code_from(tg(db, '5')[0])}")
     assert person.reference in out[0]
+
+
+def test_menu_escapes_the_questions(db):
+    wa(db, "hi")
+    wa(db, "1")
+    wa(db, "yes")  # answer 1 of 4
+    out = wa(db, "menu")
+    assert "What would you like to do?" in out[0]
+    person = consent.get_or_create_person(db, "whatsapp", "wa-1")
+    assert len(consent.latest_decisions(db, person)) == 1  # the answer given is kept

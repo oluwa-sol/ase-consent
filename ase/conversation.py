@@ -91,6 +91,11 @@ def handle_message(db: Session, channel: str, external_id: str, text: str) -> li
             return [t("menu", person.language)]
         return [t("welcome", "en")]
 
+    # MENU / HI / HELP always gets you out of a question flow; answers already given stay saved.
+    if conv.step in ("asking", "confirm_withdraw") and low.strip(".!") in RESET_WORDS:
+        conv.step = "menu"
+        return [t("menu", lang)]
+
     if conv.step == "asking":
         answer = yes_no(msg)
         if answer is None:
